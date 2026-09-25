@@ -111,7 +111,6 @@ function pickSheetFor(p) {
 async function loadDemo() {
   const r = await fetch('assets/demo.svg');
   const f = new File([await r.blob()], 'demo.svg', { type: 'image/svg+xml' });
-  f.demo = true;
   await useFile(f);
 }
 

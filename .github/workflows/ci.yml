@@ -25,7 +25,7 @@ jobs:
       - name: stamp the offline cache with the commit
         run: sed -i "s/const VERSION = 'dev'/const VERSION = '${GITHUB_SHA::8}'/" sw.js
       - name: site only
-        run: mkdir _site && cp -r index.html sw.js manifest.webmanifest css js assets _site/ && mkdir -p _site/promo && cp promo/reel.mp4 _site/promo/ 2>/dev/null || true
+        run: mkdir _site && cp -r index.html sw.js manifest.webmanifest css js assets _site/ && mkdir -p _site/promo && cp promo/reel.mp4 _site/promo/
       - uses: actions/upload-pages-artifact@v3
       - id: d
         uses: actions/deploy-pages@v4
