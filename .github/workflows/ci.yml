@@ -8,8 +8,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm test
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: stamp the offline cache with the commit
         run: sed -i "s/const VERSION = 'dev'/const VERSION = '${GITHUB_SHA::8}'/" sw.js
       - name: site only
