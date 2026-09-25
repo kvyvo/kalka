@@ -1,4 +1,4 @@
-"""Draws assets/demo.svg: a leafy branch, 420 × 297 mm (A3 landscape), our own artwork."""
+"""Draws assets/demo.svg: a leafy branch, 380 × 269 mm (fits A3 landscape), our own artwork."""
 import math, random
 from pathlib import Path
 

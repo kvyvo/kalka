@@ -71,6 +71,8 @@ const DYN = {
     cmdMirror: 'Зеркало', cmdRotate: 'Повернуть на 90°', cmdPrint: 'Печать на A4', cmdExport: 'Сохранить проект',
     cmdLang: 'English', cmdTheme: 'Тёмная / светлая тема', cmdNothing: 'Ничего не нашлось', palPh: 'Команда или номер части…',
     ctl: '100 мм',
+    hintOutline: 'Контур — для фото: из границ цвета получаются линии. Двигай «Линий», пока не останется главное.',
+    hintBw: 'Ч/Б — для рисунков, где линии уже есть: всё тёмное станет чёрным, светлое — белым.',
   },
   en: {
     title: 'Kalka — your screen as a light table',
@@ -113,6 +115,8 @@ const DYN = {
     cmdMirror: 'Mirror', cmdRotate: 'Rotate 90°', cmdPrint: 'Print on A4', cmdExport: 'Save project',
     cmdLang: 'Русский', cmdTheme: 'Dark / light theme', cmdNothing: 'Nothing found', palPh: 'Command or part number…',
     ctl: '100 mm',
+    hintOutline: 'Outline is for photos: colour edges become lines. Move “Lines” until only what matters is left.',
+    hintBw: 'B/W is for drawings that already have lines: dark turns black, light turns white.',
   },
 };
 

@@ -1,0 +1,31 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions: { contents: read, pages: write, id-token: write }
+concurrency: { group: pages, cancel-in-progress: true }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
+    steps:
+      - uses: actions/checkout@v4
+      - name: stamp the offline cache with the commit
+        run: sed -i "s/const VERSION = 'dev'/const VERSION = '${GITHUB_SHA::8}'/" sw.js
+      - name: site only
+        run: mkdir _site && cp -r index.html sw.js manifest.webmanifest css js assets _site/ && mkdir -p _site/promo && cp promo/reel.mp4 _site/promo/ 2>/dev/null || true
+      - uses: actions/upload-pages-artifact@v3
+      - id: d
+        uses: actions/deploy-pages@v4

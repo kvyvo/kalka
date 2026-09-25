@@ -141,6 +141,8 @@ function renderFile() {
   $('fileMeta').textContent = t('fileMeta', { w: src.w, h: src.h, size: kb > 1024 ? `${fmt(kb / 1024)} МБ`.replace('МБ', getLang() === 'en' ? 'MB' : 'МБ') : `${Math.round(kb)} ${getLang() === 'en' ? 'KB' : 'КБ'}` })
     + (src.pages > 1 ? t('pdfPages', { n: src.pages }) : '');
   $('strengthRow').hidden = S.view === 'original';
+  $('viewHint').hidden = S.view === 'original';
+  $('viewHint').textContent = S.view === 'bw' ? t('hintBw') : t('hintOutline');
   $('strength').value = S.strength;
   $('mirrorBtn').setAttribute('aria-pressed', String(S.mirror));
   // low resolution: fewer than 2 image px per mm of paper (≈50 dpi)
