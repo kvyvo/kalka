@@ -66,6 +66,7 @@ export function hero(svg, caption) {
     });
   });
   const say = (n) => caption && swap(caption, t('heroPart', { n: n + 1, N: COLS * ROWS }));
+  if (caption) caption.textContent = t('heroPart', { n: 1, N: COLS * ROWS }); // before the first step runs
 
   if (reduced()) { // a still that tells the same story
     const p = pos(2); sp.set({ x: p.x, y: p.y });
