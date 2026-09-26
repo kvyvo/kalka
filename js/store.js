@@ -33,6 +33,19 @@ async function tx(mode, fn) {
   });
 }
 
-export const saveFile = (blob, name) => tx('readwrite', (s) => s.put({ blob, name }, 'current')).catch(() => {});
-export const loadFile = () => tx('readonly', (s) => s.get('current')).catch(() => null);
+// Stored as ArrayBuffer, not Blob: WebKit refuses Blobs in IndexedDB in some modes (private windows).
+export const saveFile = async (blob, name) => {
+  try {
+    const data = await blob.arrayBuffer();
+    await tx('readwrite', (s) => s.put({ data, type: blob.type, name }, 'current'));
+  } catch { /* storage unavailable: the app works, just forgets */ }
+};
+/** The last opened file as a File, or null. */
+export const loadFile = () => tx('readonly', (s) => s.get('current'))
+  .then((o) => {
+    if (o?.data) return new File([o.data], o.name, { type: o.type || '' });
+    if (o?.blob) return new File([o.blob], o.name, { type: o.blob.type }); // saved by an older version
+    return null;
+  })
+  .catch(() => null);
 export const clearFile = () => tx('readwrite', (s) => s.delete('current')).catch(() => {});

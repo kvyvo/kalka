@@ -214,6 +214,11 @@ export function morph(shape, states, { dark = '--island', light = '--surface', o
     /** Live size change of the current state (drag, stretch) without animation. */
     springs: sp,
   };
+  // content can change size on its own (web font arrives, styles load late): follow it
+  const ro = new ResizeObserver((entries) => {
+    if (cur && entries.some((e) => e.target === states[cur].layer)) api.to(cur);
+  });
+  layers.forEach((l) => ro.observe(l));
   return api;
 }
 

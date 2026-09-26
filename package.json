@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "e2e": "node tests/e2e.mjs"
+    "e2e": "node tests/e2e.mjs",
+    "build": "rm -rf _site && mkdir _site && cp -r index.html sw.js manifest.webmanifest css js assets _site/ && node tools/stamp.mjs _site ${V:-dev}"
   },
   "devDependencies": {
     "playwright": "^1.63.0"

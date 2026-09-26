@@ -1,13 +1,15 @@
 // Browser acceptance checks from the tester's checklist. Run: npm run e2e
 // Starts its own static server, drives Chromium through Playwright.
-import { chromium } from 'playwright';
+import { chromium, webkit, firefox } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+// SITE=_site tests the deploy build (versioned URLs); BROWSER=webkit is Safari's engine
+const root = process.env.SITE ? join(process.cwd(), process.env.SITE) : join(dirname(fileURLToPath(import.meta.url)), '..');
+const engine = { chromium, webkit, firefox }[process.env.BROWSER || 'chromium'];
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 const server = createServer(async (req, res) => {
   let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
@@ -19,7 +21,8 @@ const server = createServer(async (req, res) => {
 }).listen(0);
 const URL_ = `http://localhost:${server.address().port}/`;
 
-const browser = await chromium.launch();
+const browser = await engine.launch();
+console.log(`${engine.name()} · ${root}`);
 let passed = 0, failed = 0;
 async function check(name, opts, fn) {
   // reduced motion by default: springs land at once, so checks read final values; one check below runs with motion on
@@ -112,11 +115,8 @@ await check('broken file shows a readable error and the app keeps working', {}, 
   assert.match(await text(page, '#planCap'), /A3/);
 });
 
-await check('PDF: page size is picked up (A4 → A4 1:1)', {}, async (page, ctx) => {
-  const maker = await ctx.newPage();
-  await maker.setContent('<h1 style="font:40px sans-serif">Kalka PDF</h1><svg width="400" height="400"><circle cx="200" cy="200" r="150" fill="none" stroke="black" stroke-width="4"/></svg>');
-  const pdf = await maker.pdf({ format: 'A4' });
-  await page.setInputFiles('#fileInput', { name: 'a4.pdf', mimeType: 'application/pdf', buffer: pdf });
+await check('PDF: page size is picked up (A4 → A4 1:1)', {}, async (page) => {
+  await page.setInputFiles('#fileInput', join(dirname(fileURLToPath(import.meta.url)), 'fixtures/a4.pdf'));
   await page.waitForFunction(() => document.getElementById('fileName').textContent === 'a4.pdf', null, { timeout: 20000 });
   assert.match(await text(page, '#sizeResult'), /Рисунок 210 × 297 мм на листе 210 × 297/);
 });
@@ -150,7 +150,7 @@ await check('tracing: keys, Russian layout, lock, Enter = done and next, white t
 
 await check('start over asks first', {}, async (page) => {
   await page.evaluate(() => { window.kalka.S.done.push(0); });
-  await page.click('#startBtn'); await page.keyboard.press('Enter'); await page.keyboard.press('Escape');
+  await page.click('#startBtn'); await page.keyboard.press('Enter'); await page.click('#bExit', { force: true });
   await page.click('#resetDone');
   await page.click('#islConfirm button[value=no]');
   assert.match(await text(page, '#progress'), /Обведено/);

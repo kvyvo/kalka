@@ -20,7 +20,9 @@ self.addEventListener('fetch', (e) => {
   const same = url.origin === location.origin;
   // pages: network first so updates arrive; everything else (incl. fonts and pdf.js): cache first
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then((r) => { put(req, r.clone()); return r; }).catch(() => caches.match('index.html')));
+    // past the HTTP cache: the page must be as fresh as the versioned scripts it points to
+    e.respondWith(fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+      .then((r) => { put(req, r.clone()); return r; }).catch(() => caches.match('index.html')));
   } else if (same || /fonts\.(googleapis|gstatic)\.com|cdn\.jsdelivr\.net/.test(url.host)) {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((r) => { if (r.ok || r.type === 'opaque') put(req, r.clone()); return r; })));
   }

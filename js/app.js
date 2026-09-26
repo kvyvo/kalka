@@ -1,7 +1,7 @@
 import { sheetSize, fitDrawing, cellSize, suggestGrid, gridLines, printTiles, CARD } from './geometry.js';
 import { SCREENS, candidates, baseScale, signature, screenMm } from './screens.js';
 import { openFile, prepare } from './image.js';
-import { loadSettings, saveSettings, saveFile, loadFile } from './store.js';
+import { loadSettings, saveSettings, saveFile, loadFile, clearFile } from './store.js';
 import { setLang, getLang, t, fmt, plural } from './i18n.js';
 import { SPRING, fromApple } from './spring.js';
 import { Springs, swap, reveal, morph, easing, reduced, goLive } from './motion.js';
@@ -11,6 +11,19 @@ import { createTrace } from './trace.js';
 import { hero } from './hero.js';
 
 const $ = (id) => document.getElementById(id);
+// The page and the scripts must come from the same deploy (tools/stamp.mjs writes both).
+// A browser can hold an older page in its cache for a while and fetch newer scripts:
+// then reload once, which revalidates the page itself.
+const BUILD = 'dev';
+if (document.querySelector('meta[name=build]')?.content !== BUILD) {
+  let again = true;
+  try { again = sessionStorage.getItem('kalka-reload') !== BUILD; sessionStorage.setItem('kalka-reload', BUILD); } catch { /* no storage */ }
+  if (again) location.reload();
+  throw new Error(`stale page for build ${BUILD}`);
+}
+// Safari may run modules before the stylesheet is applied; everything below measures layout
+const css = document.querySelector('link[rel=stylesheet][href^="css/"]');
+if (css && !css.sheet) await new Promise((r) => { css.addEventListener('load', r, { once: true }); css.addEventListener('error', r, { once: true }); });
 const UA = navigator.userAgent;
 const IPAD = /iPad/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
 const MAC = /Macintosh/.test(UA) && !IPAD;
@@ -101,8 +114,9 @@ async function useFile(file, { restoring = false } = {}) {
       S.rot = 0; S.mirror = false;
       S.sizeMode = src.physical ? 'file' : 'fit';
       if (src.physical) pickSheetFor(src.physical);
-      saveFile(file, src.name);
     }
+    // the demo is always at hand: store only the user's own files
+    if (src.name === 'demo.svg') { if (!restoring) clearFile(); } else saveFile(file, src.name);
     if (S.sizeMode === 'file' && !src.physical) S.sizeMode = 'fit';
     await rebuild({ quiet: true });
     fileBtn.to('done');
@@ -126,9 +140,9 @@ function pickSheetFor(p) {
   }
   S.sheet = 'custom'; S.custom = { w: Math.ceil(p.w + 20), h: Math.ceil(p.h + 20) }; S.land = land;
 }
-async function loadDemo() {
+async function loadDemo(opts) {
   const r = await fetch('assets/demo.svg');
-  await useFile(new File([await r.blob()], 'demo.svg', { type: 'image/svg+xml' }));
+  await useFile(new File([await r.blob()], 'demo.svg', { type: 'image/svg+xml' }), opts);
 }
 
 /** Re-prepare pictures after view/rotate/mirror/strength change. */
@@ -483,7 +497,6 @@ async function importProject(file) {
     for (const key of allowed) if (key in (o.settings || {})) S[key] = o.settings[key];
     const f = new File([buf], String(o.name || 'image'), { type: String(o.type || '') });
     await useFile(f, { restoring: true });
-    saveFile(f, f.name);
     island.toast(t('loaded'), 'ok');
   } catch { island.toast(t('badFile'), 'warn'); }
 }
@@ -508,7 +521,7 @@ function commands(q) {
   cmds.push(
     { title: t('cmdTrace'), hint: '↵', toast: false, run: () => startTrace(undefined, $('startBtn')) },
     { title: t('cmdOpen'), toast: false, run: () => $('fileInput').click() },
-    { title: t('cmdDemo'), toast: false, run: loadDemo },
+    { title: t('cmdDemo'), toast: false, run: () => loadDemo() },
     { title: t('cmdOutline'), toast: false, run: () => setView('outline') },
     { title: t('cmdBw'), toast: false, run: () => setView('bw') },
     { title: t('cmdOriginal'), toast: false, run: () => setView('original') },
@@ -535,8 +548,8 @@ renderAll();
 hero($('heroSvg'), $('heroCap'));
 (async () => {
   const stored = await loadFile();
-  if (stored?.blob) await useFile(new File([stored.blob], stored.name, { type: stored.blob.type }), { restoring: true });
-  else await loadDemo();
+  if (stored) await useFile(stored, { restoring: true });
+  else await loadDemo({ restoring: S.doneKey.startsWith('demo.svg|') }); // back on the sample: keep its sheet and progress
   requestAnimationFrame(goLive);
 })();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
