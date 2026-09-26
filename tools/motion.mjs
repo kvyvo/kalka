@@ -1,53 +1,47 @@
-// Records docs/motion.gif: the real page, driven by Playwright — the island, the palette,
-// the liquid indicator, the plan's camera and the jump into the light table.
+// Renders docs/motion.gif from tools/motion.html: every frame is seek(t), a pure function of time.
+// 4 subframes per frame, blended with ffmpeg tmix for motion blur. GIF counts delays in 1/100 s and
+// browsers slow anything under 2/100 s down, so 50 fps is the fastest a GIF really plays.
+//   node tools/motion.mjs            → docs/motion.gif (720 × 720, 50 fps, 14 s loop)
+//   FPS=50 SIZE=720 node tools/motion.mjs
 import { chromium } from 'playwright';
-import { createServer } from 'node:http';
-import { readFile, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import { extname, join, dirname } from 'node:path';
+import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.webmanifest': 'application/json' };
-const server = createServer(async (req, res) => {
-  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname); if (p.endsWith('/')) p += 'index.html';
-  try { res.writeHead(200, { 'content-type': types[extname(p)] || 'application/octet-stream' }).end(await readFile(join(root, p))); }
-  catch { res.writeHead(404).end(); }
-}).listen(0);
-const dir = await mkdtemp(join(tmpdir(), 'kalka-'));
-const size = { width: 1280, height: 800 };
+const FPS = Number(process.env.FPS || 50), SUB = 4, SIZE = Number(process.env.SIZE || 720);
+const scene = new URL('./motion.html', import.meta.url).href;
+const out = fileURLToPath(new URL('../docs/motion.gif', import.meta.url));
+
 const b = await chromium.launch();
-const ctx = await b.newContext({ viewport: size, deviceScaleFactor: 2, screen: { width: 1710, height: 1112 }, recordVideo: { dir, size } });
+const ctx = await b.newContext({ viewport: { width: 1440, height: 1440 } });
+if (process.env.HTTPS_PROXY) { // sandboxes: the browser may not trust the proxy, curl does
+  await ctx.route(/^https:\/\/fonts\.(googleapis|gstatic)\.com\//, async (r) => {
+    const u = r.request().url();
+    const body = execFileSync('curl', ['-sS', '--fail', '-A', r.request().headers()['user-agent'], u]);
+    await r.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*' }, body, contentType: u.includes('gstatic') ? 'font/woff2' : 'text/css' });
+  });
+}
 const p = await ctx.newPage();
-await p.addInitScript(() => {
-  localStorage.setItem('kalka-v1', JSON.stringify({ lang: 'ru', sheet: 'A3', sizeMode: 'fit' }));
-  // headless full screen resizes the window under the recorder; the recording is the "screen" here
-  Element.prototype.requestFullscreen = () => Promise.reject(new Error('recording'));
-});
-await p.goto(`http://localhost:${server.address().port}/`);
-await p.waitForFunction(() => window.kalka && document.getElementById('thumb').src);
-const t0 = Date.now();
-const wait = (ms) => p.waitForTimeout(ms);
-await wait(2200);                                   // hero: the screen walks under the sheet
-await p.keyboard.press('Meta+k'); await wait(700);  // the island grows into the palette
-await p.keyboard.type('a1', { delay: 90 }); await wait(500);
-await p.keyboard.press('Enter'); await wait(1500);  // palette → toast → pill
-await p.evaluate(() => document.getElementById('steps').scrollIntoView({ behavior: 'smooth' })); await wait(900);
-await p.click('[data-name=sheet] input[value=A2] + span'); await wait(900); // liquid indicator + camera + grid draws in
-await p.click('[data-name=view] input[value=outline] + span'); await wait(1100);
-const cell = await p.locator('#sheet .cell').nth(1).boundingBox();
-await p.mouse.move(cell.x + cell.width / 2, cell.y + cell.height / 2, { steps: 12 }); await wait(700); // tooltip
-await p.mouse.click(cell.x + cell.width / 2, cell.y + cell.height / 2); await wait(1200); // grows into the light table
-await p.keyboard.press('ArrowRight'); await wait(900);
-await p.keyboard.press('Enter'); await wait(1000);
-const dur = (Date.now() - t0) / 1000;
-await ctx.close(); await b.close(); server.close();
-const video = join(dir, (await readdir(dir)).find((f) => f.endsWith('.webm')));
-// the video starts at page creation; keep the scripted part
-const total = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', video]).toString());
-execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', String(Math.max(0, total - dur)), '-i', video,
-  '-vf', 'fps=15,scale=640:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle',
-  join(root, 'docs/motion.gif')]);
-await rm(dir, { recursive: true });
-console.log('docs/motion.gif', dur.toFixed(1), 's');
+await p.goto(scene);
+await p.evaluate(() => document.fonts.ready);
+const T = await p.evaluate(() => window.T);
+
+// png frames at FPS × SUB → tmix averages each group of SUB → keep one of SUB → a lossless master,
+// then palette → gif from the master (so the gif can be re-tuned without rendering again)
+const master = fileURLToPath(new URL('../docs/.motion-master.mkv', import.meta.url));
+const ff = spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS * SUB), '-i', '-',
+  '-vf', `tmix=frames=${SUB},framestep=${SUB},scale=${SIZE}:${SIZE}:flags=lanczos`, '-r', String(FPS), '-c:v', 'ffv1', master], { stdio: ['pipe', 'inherit', 'inherit'] });
+
+const N = Math.round(T * FPS * SUB);
+for (let i = 0; i < N; i++) {
+  await p.evaluate((t) => seek(t), i / (FPS * SUB));
+  const png = await p.screenshot({ type: 'png' });
+  if (!ff.stdin.write(png)) await new Promise((r) => ff.stdin.once('drain', r));
+  if (i % 200 === 0) process.stdout.write(`\r${Math.round((i / N) * 100)} %`);
+}
+ff.stdin.end();
+await new Promise((r) => ff.on('close', r));
+await b.close();
+execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-i', master, '-filter_complex',
+  `split[a][b];[a]palettegen=max_colors=${process.env.COLORS || 64}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
+  '-loop', '0', out]);
+console.log(`\r${out}`);

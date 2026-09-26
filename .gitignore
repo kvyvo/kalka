@@ -5,3 +5,4 @@ node_modules/
 .claude/
 _site/
 .playwright-mcp/
+docs/.motion-master.mkv

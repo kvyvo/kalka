@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>kalka · motion</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..600&family=Geist+Mono:wght@400..500&display=swap">
+<!--
+  docs/motion.gif as a pure function of time. seek(t) computes every style from t:
+  no css transitions, no timers, nothing carried from frame to frame, so any frame can be
+  rendered on its own and the last frame is the first one.
+  120 bpm, 7 bars, 28 beats, 14 s. every value is the sum of closed-form spring steps.
+-->
+<style>
+  :root { --canvas: #ECEAE4; --surface: #fff; --surface-2: #F4F3EF; --well: #E3E1DA; --track: #D6D4CD; --ink: #111110; --ink-2: #6B6A65; --ink-3: #8E8D87; --accent: #E0102F; --line: rgb(17 17 16 / .08); --fill: rgb(17 17 16 / .05); --fill-2: rgb(17 17 16 / .09); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1440px; height: 1440px; overflow: hidden; background: var(--canvas); }
+  body { font: 400 15px/1.5 "Geist", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .mono { font-family: "Geist Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .abs { position: absolute; }
+  #frame { position: absolute; inset: 0; overflow: hidden; }
+  #world { position: absolute; left: 0; top: 0; width: 1440px; height: 1440px; transform-origin: 0 0; }
+  .card { position: absolute; background: var(--surface); border-radius: 28px; box-shadow: 0 1px 1px rgb(0 0 0 / .03), 0 8px 24px -12px rgb(0 0 0 / .12); }
+  .head { position: absolute; left: 24px; top: 22px; display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 19px; letter-spacing: -.02em; }
+  .num { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font: 500 12.5px/26px "Geist Mono", monospace; text-align: center; }
+  .label { position: absolute; font-size: 13.5px; color: var(--ink-2); }
+  .ic { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .sw { position: absolute; white-space: nowrap; }
+  /* segmented */
+  .seg { position: absolute; height: 36px; border-radius: 999px; background: var(--well); }
+  .seg .thumb { position: absolute; top: 3px; height: 30px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 3px 10px -2px rgb(0 0 0 / .1); }
+  .seg span { position: absolute; top: 0; height: 36px; line-height: 36px; text-align: center; font-size: 13.5px; font-weight: 500; }
+  /* slider */
+  .slider { position: absolute; height: 40px; border-radius: 999px; background: var(--well); overflow: hidden; }
+  .slider .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); border-radius: 999px 0 0 999px; }
+  .slider b, .slider i { position: absolute; top: 50%; translate: 0 -50%; color: #fff; mix-blend-mode: difference; font-size: 13px; font-weight: 500; font-style: normal; }
+  /* switch */
+  .switch { position: absolute; width: 46px; height: 28px; border-radius: 999px; }
+  .switch i { position: absolute; top: 2px; height: 24px; border-radius: 999px; background: #fff; box-shadow: 0 1px 1px rgb(0 0 0 / .06), 0 3px 8px rgb(0 0 0 / .16); }
+  .btn { position: absolute; height: 38px; border-radius: 999px; display: grid; place-items: center; font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .island { position: absolute; background: #000; overflow: hidden; box-shadow: 0 2px 4px rgb(0 0 0 / .05), 0 24px 60px -20px rgb(0 0 0 / .3); }
+  .layer { position: absolute; left: 50%; top: 0; }
+  #cursor { position: absolute; left: 0; top: 0; width: 26px; height: 32px; transform-origin: 0 0; z-index: 90; }
+  #screen { position: absolute; inset: 0; pointer-events: none; }
+  #table { position: absolute; background: #fff; overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="world">
+    <!-- the page -->
+    <div class="abs" style="left:48px;top:30px;display:flex;align-items:center;gap:9px;font-weight:600;font-size:16px"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><rect x="2" y="2" width="12" height="12" rx="3.5"/><path d="M6 2v12M10 2v12M2 8h12"/></svg>Kalka</div>
+
+    <!-- island: pill → palette → toast → pill -->
+    <div class="island" id="isl" style="z-index:50">
+      <div class="layer" id="islIdle" style="display:flex;align-items:center;gap:10px;height:44px;padding:0 10px 0 16px;color:#fff;font-size:14px;font-weight:500;white-space:nowrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" class="ic"><rect x="2" y="2" width="12" height="12" rx="3.5"/><path d="M6 2v12M10 2v12M2 8h12"/></svg>
+        <span style="position:relative;display:inline-block;width:104px;height:20px"><span class="sw" id="sumA" style="left:0;top:0">Kalka</span><span class="sw" id="sumB" style="left:0;top:0">A3 · 6 частей</span></span>
+        <svg width="18" height="18" viewBox="0 0 20 20" style="rotate:-90deg"><circle cx="10" cy="10" r="7.5" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="2.4"/><circle id="ring" cx="10" cy="10" r="7.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <span class="mono" style="font-size:11px;padding:4px 6px;border-radius:6px;background:rgb(255 255 255/.12);color:rgb(255 255 255/.7)">⌘K</span>
+      </div>
+      <div class="layer" id="islPal" style="width:600px;color:var(--ink)">
+        <div style="display:flex;align-items:center;gap:12px;height:60px;padding:0 18px 0 22px;border-bottom:1px solid var(--line);color:var(--ink-2)">
+          <svg width="16" height="16" viewBox="0 0 16 16" class="ic"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
+          <span style="flex:1;font-size:17px;color:var(--ink)"><span id="palText"></span><span id="caret" style="display:inline-block;width:2px;height:20px;background:var(--accent);vertical-align:-4px;margin-left:1px"></span><span id="palPh" style="color:var(--ink-3);position:absolute;margin-left:-3px">Команда или часть…</span></span>
+          <span class="mono" style="font-size:11px;padding:4px 6px;border-radius:6px;background:var(--fill-2)">esc</span>
+        </div>
+        <div style="position:relative;padding:6px" id="palList"></div>
+      </div>
+      <div class="layer" id="islToast" style="display:flex;align-items:center;gap:10px;height:48px;padding:0 20px 0 10px;color:#fff;font-size:14.5px;font-weight:500;white-space:nowrap">
+        <span style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:grid;place-items:center"><svg width="14" height="14" viewBox="0 0 16 16" class="ic" style="stroke:#fff;stroke-width:2"><path d="M3.5 8.5l3 3 6-7"/></svg></span>
+        6 листов A4 готовы к печати
+      </div>
+    </div>
+
+    <div class="abs" id="dim" style="left:-2000px;top:-2000px;width:5440px;height:5440px;background:rgb(14 14 13/.22);z-index:40"></div>
+    <!-- 1. picture -->
+    <div class="card" style="left:60px;top:120px;width:640px;height:370px">
+      <div class="head"><span class="num">1</span>Картинка</div>
+      <div class="abs" style="left:22px;top:74px;width:596px;height:76px;border-radius:22px;background:var(--surface-2)">
+        <div class="abs" id="thumbBox" style="left:10px;top:10px;width:56px;height:56px;border-radius:14px;background:#fff;box-shadow:0 0 0 1px var(--line);overflow:hidden">
+          <svg viewBox="0 0 380 269" style="position:absolute;inset:0;width:100%;height:100%"><use href="#branch" id="thumbArt"/></svg>
+        </div>
+        <div class="abs" id="fileText" style="left:14px;top:16px;width:360px;height:44px">
+          <b class="sw" id="fnA" style="left:0;top:0;font-weight:600">Перетащи файл сюда</b>
+          <b class="sw" id="fnB" style="left:0;top:0;font-weight:600">ветка.svg</b>
+          <span class="sw" id="fmA" style="left:0;top:23px;font-size:12.5px;color:var(--ink-2)">JPG, PNG, SVG, PDF · или вставь из буфера</span>
+          <span class="sw" id="fmB" style="left:0;top:23px;font-size:12.5px;color:var(--ink-2)">380 × 269 мм · из файла</span>
+        </div>
+        <div class="btn" id="fileBtn" style="top:19px;background:var(--ink);color:#fff;overflow:hidden">
+          <span class="sw" id="fbLabel">Выбрать</span>
+          <svg class="sw" id="fbBusy" width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="28 100"/></svg>
+          <svg class="sw" id="fbDone" width="20" height="20" viewBox="0 0 24 24"><path id="fbCheck" d="M7 12.5l3 3 7-7.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1"/></svg>
+        </div>
+      </div>
+      <span class="label" style="left:24px;top:190px">Вид</span>
+      <div class="seg" id="segView" style="left:144px;top:180px;width:282px">
+        <div class="thumb" id="segViewThumb"></div>
+        <span style="left:0;width:100px">Как есть</span><span style="left:100px;width:94px">Контур</span><span style="left:194px;width:88px">Ч/Б</span>
+      </div>
+      <span class="label" style="left:24px;top:252px">Линий</span>
+      <div class="slider" style="left:144px;top:242px;width:460px">
+        <div class="fill" id="slFill"></div>
+        <b style="left:16px">меньше</b><i class="mono" id="slVal" style="right:16px;opacity:.75;font-size:12.5px">60 %</i>
+      </div>
+      <span class="label" style="left:24px;top:318px">Поворот</span>
+      <div class="abs" style="left:144px;top:308px;height:36px;padding:0 13px;border-radius:999px;background:var(--fill);display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:500"><svg width="16" height="16" viewBox="0 0 16 16" class="ic"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2.5v2.5h-2.5"/></svg>90°</div>
+    </div>
+
+    <!-- 2. sheet -->
+    <div class="card" style="left:60px;top:520px;width:640px;height:230px">
+      <div class="head"><span class="num">2</span>Лист и размер</div>
+      <span class="label" style="left:24px;top:88px">Лист</span>
+      <div class="seg" id="segSheet" style="left:144px;top:78px;width:360px">
+        <div class="thumb" id="segSheetThumb"></div>
+        <span style="left:0;width:56px">A4</span><span style="left:56px;width:56px">A3</span><span style="left:112px;width:56px">A2</span><span style="left:168px;width:56px">A1</span><span style="left:224px;width:56px">A0</span><span style="left:280px;width:80px">Свой</span>
+      </div>
+      <span class="label" style="left:24px;top:160px">Отразить</span>
+      <div class="switch" id="sw" style="left:144px;top:152px"><i id="swKnob"></i></div>
+      <span class="abs" style="left:202px;top:156px;font-size:13.5px;font-weight:500">Зеркало</span>
+    </div>
+
+    <!-- 3. screen -->
+    <div class="card" style="left:60px;top:780px;width:640px;height:420px">
+      <div class="head"><span class="num">3</span>Экран</div>
+      <div class="abs" id="badge" style="right:24px;top:24px;height:28px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:500;line-height:28px;overflow:hidden">
+        <span class="sw" id="bdA" style="right:12px">не проверено</span><span class="sw" id="bdB" style="right:12px">совпало</span>
+      </div>
+      <div class="abs" style="left:24px;top:76px;width:590px;font-size:14px;color:var(--ink-2);line-height:1.45">Приложи к рамке любую пластиковую карту. Рамка больше карты — жми «Меньше», меньше — «Больше». Или тяни рамку за край.</div>
+      <div class="abs" id="cardBox" style="left:26px;top:150px;height:204px;border:2px solid var(--ink);background:repeating-linear-gradient(135deg,transparent 0 9px,var(--fill-2) 9px 10px)">
+        <span class="mono abs" style="left:50%;top:50%;translate:-50% -50%;font-size:13px;color:var(--ink-2)">85,6 × 54</span>
+        <span class="abs" id="grip" style="right:-10px;top:83px;width:18px;height:38px;border-radius:999px;background:var(--ink)"></span>
+      </div>
+      <div class="abs" style="left:420px;top:176px;width:196px;display:grid;gap:10px">
+        <div style="position:relative;height:38px;border-radius:999px;background:var(--fill)" class="mono"><span id="adjA" class="sw" style="left:50%;translate:-50% 0;top:9px;font-size:13px">0,0 %</span><span id="adjB" class="sw" style="left:50%;translate:-50% 0;top:9px;font-size:13px">+1,4 %</span></div>
+        <div id="okBtn" style="height:44px;border-radius:999px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:500;font-size:14.5px">Совпало</div>
+      </div>
+    </div>
+
+    <!-- plan -->
+    <div class="card" style="left:740px;top:120px;width:640px;height:630px">
+      <div class="abs mono" id="dimW" style="left:0;right:0;top:34px;text-align:center;font-size:12px;color:var(--ink-2)"><span class="sw" id="dwA" style="left:50%;translate:-50% 0">420</span><span class="sw" id="dwB" style="left:50%;translate:-50% 0">841</span></div>
+      <div class="abs" id="sheet" style="left:40px;top:70px;width:560px;height:396px;background:#fff;box-shadow:0 0 0 1px var(--ink-3);transform-origin:50% 50%">
+        <svg viewBox="0 0 380 269" class="abs" style="left:4%;top:4%;width:92%;height:92%"><use href="#branch" id="planArt"/></svg>
+        <svg class="abs" id="grid" viewBox="0 0 560 396" style="inset:0;width:100%;height:100%;overflow:visible"></svg>
+      </div>
+      <div class="abs mono" style="left:0;right:0;top:500px;text-align:center;font-size:12.5px;color:var(--ink-2)"><span class="sw" id="pcA" style="left:50%;translate:-50% 0">A3 · 3 × 2 части · 1 : 1</span><span class="sw" id="pcB" style="left:50%;translate:-50% 0">A1 · 4 × 3 части · 1 : 1</span></div>
+      <div class="abs" id="tip" style="display:grid;gap:1px;padding:8px 12px;border-radius:14px;background:#000;color:#fff;font-size:13px;white-space:nowrap;box-shadow:0 24px 60px -20px rgb(0 0 0/.3)"><b style="font-weight:600">Часть 6</b><span class="mono" style="color:rgb(255 255 255/.65);font-size:11.5px">210 × 198 мм · клик — обводить</span></div>
+    </div>
+
+    <!-- 4. parts -->
+    <div class="card" style="left:740px;top:780px;width:640px;height:420px">
+      <div class="head"><span class="num">4</span>Части и обводка</div>
+      <div class="abs" style="left:24px;top:84px;font-size:14px;color:var(--ink-2)">Каждая часть с запасом помещается на экран MacBook Air 13″.</div>
+      <div class="abs" style="left:24px;top:136px;height:50px;padding:0 24px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;gap:10px;font-weight:500;font-size:15.5px">Обводить часть 1<svg width="18" height="18" viewBox="0 0 16 16" class="ic"><path d="M3 8h10M9 4l4 4-4 4"/></svg></div>
+      <div class="abs" style="left:24px;top:212px;display:flex;gap:8px;font-size:13.5px;font-weight:500">
+        <span style="height:36px;padding:0 13px;border-radius:999px;background:var(--fill);display:flex;align-items:center">Печать на A4</span>
+        <span style="height:36px;padding:0 13px;border-radius:999px;background:var(--fill);display:flex;align-items:center">Сохранить проект</span>
+      </div>
+    </div>
+
+    <svg id="cursor" viewBox="0 0 26 32"><path d="M3 2.5v23.2l6.2-5.9 4 9.3 4.2-1.8-4-9.2h8.8z" fill="#111110" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- the light table: screen space, grows out of a part of the plan -->
+  <div id="screen">
+    <div id="table">
+      <div class="abs" id="tableArt" style="left:0;top:0;width:1440px;height:1440px">
+        <div class="abs" id="paper" style="background:#fff;outline:4000px solid #D9D8D3"></div>
+        <svg viewBox="0 0 380 269" class="abs" id="tableSvg"><use href="#branch"/></svg>
+        <div class="abs" id="frameRed" style="border:3px solid var(--accent);border-radius:4px;box-shadow:0 0 0 3000px rgb(255 255 255 / .55)"></div>
+      </div>
+      <div class="abs mono" style="left:40px;top:34px;font-size:15px;color:var(--ink-2)"><div style="width:200px;height:10px;border:2px solid var(--ink);border-top:0;margin-bottom:6px"></div>100 мм</div>
+      <!-- hud: full ↔ lock pill -->
+      <div class="abs" id="hud" style="background:#fff;overflow:hidden;box-shadow:0 0 0 1px rgb(17 17 16/.08),0 16px 40px -16px rgb(0 0 0/.3)">
+        <div class="layer" id="hudFull" style="top:auto;bottom:0;display:flex;align-items:center;gap:12px;height:72px;padding:0 12px;font-size:17px;white-space:nowrap">
+          <div style="position:relative;width:78px;height:36px" id="mini"></div>
+          <div style="position:relative;width:150px;height:44px"><b class="sw" id="hpA" style="top:0;font-size:19px;font-weight:600">Часть 6 из 12</b><b class="sw" id="hpB" style="top:0;font-size:19px;font-weight:600">Часть 7 из 12</b><span class="sw" style="top:24px;font-size:14px;color:var(--ink-2)">ряд 2</span></div>
+          <span style="width:46px;height:46px;border-radius:999px;background:rgb(17 17 16/.05);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></span>
+          <span style="width:46px;height:46px;border-radius:999px;background:rgb(17 17 16/.05);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><path d="M6 3.5 10.5 8 6 12.5"/></svg></span>
+          <span id="doneBtn" style="height:46px;padding:0 18px;border-radius:999px;display:flex;align-items:center;gap:8px;font-weight:500"><svg width="20" height="20" viewBox="0 0 16 16" class="ic" id="doneIc" style="stroke-width:2"><path id="doneCheck" d="M3.5 8.5l3 3 6-7" pathLength="1" stroke-dasharray="1"/></svg>Готово</span>
+          <span style="width:1px;height:26px;background:rgb(17 17 16/.1)"></span>
+          <span id="lockBtn" style="width:46px;height:46px;border-radius:999px;background:rgb(17 17 16/.05);display:grid;place-items:center;position:relative;overflow:hidden"><i id="lockFill" style="position:absolute;left:0;top:0;bottom:0;background:#111110"></i><svg width="20" height="20" viewBox="0 0 16 16" class="ic" style="position:relative" id="lockIc"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg></span>
+          <span style="height:46px;padding:0 16px;border-radius:999px;background:rgb(17 17 16/.05);display:flex;align-items:center;font-weight:500">Выход</span>
+        </div>
+        <div class="layer" id="hudLock" style="top:auto;bottom:0;display:flex;align-items:center;gap:10px;height:56px;padding:0 24px;font-size:16px;font-weight:500;white-space:nowrap;overflow:hidden">
+          <i id="unlockFill" style="position:absolute;left:0;top:0;bottom:0;background:#111110"></i>
+          <svg width="20" height="20" viewBox="0 0 16 16" class="ic" style="position:relative" id="unIc"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg><span style="position:relative" id="unText">Зажми, чтобы снять замок</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="branch" viewBox="0 0 380 269">
+      <path d="M22 238C80 232 150 205 205 160S300 70 355 38" fill="none" stroke="#3A2E26" stroke-width="5" stroke-linecap="round"/>
+      <g fill="#8DB896" fill-opacity=".8" stroke="#2F4A36" stroke-width="2" stroke-linejoin="round">
+        <path d="M70 226q10-40 44-50q-4 38-44 50z"/><path d="M96 222q30 20 64 8q-30-24-64-8z"/>
+        <path d="M150 196q2-44 34-60q2 40-34 60z"/><path d="M176 180q36 12 64-8q-34-20-64 8z"/>
+        <path d="M230 138q0-42 28-60q6 38-28 60z"/><path d="M252 120q36 8 60-16q-36-14-60 16z"/>
+        <path d="M300 78q-4-36 22-54q8 32-22 54z"/><path d="M318 62q30 2 46-22q-30-6-46 22z"/>
+      </g>
+      <g fill="#D9452F" stroke="#6E1A10" stroke-width="1.5"><circle cx="132" cy="210" r="7"/><circle cx="144" cy="216" r="7"/><circle cx="268" cy="104" r="7"/><circle cx="280" cy="96" r="7"/></g>
+    </symbol>
+    <filter id="outline"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="1.8" intercept="-.3"/><feFuncG type="linear" slope="1.8" intercept="-.3"/><feFuncB type="linear" slope="1.8" intercept="-.3"/></feComponentTransfer></filter>
+  </defs>
+</svg>
+
+<script>
+/* ---------- springs: closed-form step responses (as kalka's js/spring.js) ---------- */
+const TAU = 2 * Math.PI;
+function spring(duration, bounce = 0) {
+  const k = (TAU / duration) ** 2, c = 4 * Math.PI * (1 - bounce) / duration;
+  const w0 = Math.sqrt(k), z = c / (2 * w0);
+  if (z < 1) { const wd = w0 * Math.sqrt(1 - z * z), B = z * w0 / wd; return (t) => t <= 0 ? 0 : 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + B * Math.sin(wd * t)); }
+  return (t) => t <= 0 ? 0 : 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+}
+const S = { quick: spring(0.3), ui: spring(0.35, 0.1), smooth: spring(0.5), snappy: spring(0.45, 0.12), cam: spring(0.7), cur: spring(0.42), slow: spring(0.9), snap: (t) => (t < 0 ? 0 : 1) };
+const T = 14, BEAT = 0.5, b = (n) => n * BEAT;
+const clamp = (v, a = 0, z = 1) => Math.min(z, Math.max(a, v));
+const mix = (a, c, k) => a + (c - a) * k;
+
+/** A value that changes target many times: the sum of one spring per change, periodic over T.
+    steps: [time, value, spring?]. The last value must equal the first, so the loop closes. */
+function track(v0, steps, def = S.smooth) {
+  let prev = v0; const d = steps.map(([t, v, s]) => { const x = [t, v - prev, s || def]; prev = v; return x; });
+  if (Math.abs(prev - v0) > 1e-6) console.warn('track does not loop', v0, prev);
+  return (t) => { let v = v0; for (const [ti, dv, s] of d) v += ti <= t ? dv * s(t - ti) : dv * (s(t - ti + T) - 1); return v; };
+}
+/** A 0→1→0 pulse-ish on/off track from a list of [on, off] windows. */
+const onoff = (wins, s = S.smooth) => track(0, wins.flatMap(([a, z]) => [[a, 1, s], [z, 0, s]]));
+
+/* ---------- world layout (page coordinates) ---------- */
+const P = {
+  fileBtn: [598, 213], viewContour: [336, 318], slider: [520, 382], sheetA1: [396, 616], swKnob: [174, 686],
+  grip: [0, 0], okBtn: [578, 1003], island: [720, 58],
+};
+// camera shots: [cx, cy, zoom]
+const SHOT = {
+  file: [400, 214, 2.05], island: [720, 60, 2.6], view: [372, 330, 2.0], sheet: [340, 622, 2.1], plan: [1060, 420, 1.62],
+  sw: [300, 690, 2.4], screen: [380, 1000, 1.75], pal: [720, 250, 1.75],
+};
+const cam = (() => {
+  const shots = [[b(0), 'file'], [b(3) - 0.25, 'island'], [b(4) - 0.3, 'view'], [b(8) - 0.3, 'sheet'], [b(9) - 0.2, 'plan'], [b(11) - 0.3, 'sw'],
+    [b(12) - 0.3, 'screen'], [b(15) - 0.3, 'plan'], [b(24) - 0.35, 'pal'], [b(27) - 0.3, 'file']];
+  const mk = (i) => track(SHOT.file[i], shots.slice(1).map(([t, n]) => [t, SHOT[n][i], S.cam]));
+  const x = mk(0), y = mk(1), zl = track(Math.log(SHOT.file[2]), shots.slice(1).map(([t, n]) => [t, Math.log(SHOT[n][2]), S.cam]));
+  return (t) => ({ x: x(t), y: y(t), z: Math.exp(zl(t)) });
+})();
+const toScreen = (c, px, py) => [720 + (px - c.x) * c.z, 720 + (py - c.y) * c.z];
+const toWorld = (c, sx, sy) => [c.x + (sx - 720) / c.z, c.y + (sy - 720) / c.z];
+
+/* ---------- the plan: grid, parts ---------- */
+const sheetBox = { x: 780, y: 190, w: 560, h: 396 };
+const partRect = (cols, rows, i) => { const cw = 560 / cols, ch = 396 / rows; return { x: sheetBox.x + (i % cols) * cw, y: sheetBox.y + Math.floor(i / cols) * ch, w: cw, h: ch }; };
+const TARGET_PART = 5; // part 6 of 12 (4 × 3): row 2, column 2, where the branch is
+const tp = partRect(4, 3, TARGET_PART);
+const HUD = { next: [790, 1333], done: [900, 1333], lock: [1082, 1333], pill: [720, 1340] };
+const tableCam = SHOT.plan; // camera holds on the plan while the table is up
+const tcam = { x: tableCam[0], y: tableCam[1], z: tableCam[2] };
+const W = (sx, sy) => toWorld(tcam, sx, sy);
+
+/* ---------- the cursor: springs between targets, presses, drags ---------- */
+const CUR = [
+  [b(0), P.fileBtn], [b(1) - 0.05, [596, 214]],
+  [b(3) - 0.3, [770, 70]],
+  [b(4) - 0.35, P.viewContour],
+  [b(5) + 0.1, [60 + 144 + 460 * 0.6, 382]],
+  // slider drag handled below
+  [b(8) - 0.35, P.sheetA1],
+  [b(9) - 0.1, [1150, 300]],
+  [b(11) - 0.35, P.swKnob],
+  [b(12) - 0.35, [506, 1034]],
+  // grip drag handled below
+  [b(14) - 0.35, P.okBtn],
+  [b(15) - 0.3, [tp.x + tp.w * 0.5, tp.y + tp.h * 0.55]],
+  [b(17) - 0.3, W(...HUD.next)], [b(18) - 0.3, W(...HUD.done)], [b(19) - 0.3, W(...HUD.next)],
+  [b(20) - 0.3, W(...HUD.lock)], [b(21) + 0.2, W(...HUD.pill)],
+  [b(23) + 0.2, W(760, 1100)],
+  [b(24) - 0.2, [860, 120]],
+  [b(27) - 0.25, P.fileBtn],
+];
+const SL = { x0: 144 + 60, w: 460, v0: 0.6 };               // slider: track left in page coords, width
+const slX = (v) => SL.x0 + SL.w * v;
+const DRAG1 = [b(5) + 0.35, b(7)];                            // slider held
+const GRIP0 = 26 + 60 + 324;                                  // grip x in page coords at rest (card box 324 wide)
+const DRAG2 = [b(12) + 0.05, b(13)];
+const cx0 = track(P.fileBtn[0], CUR.slice(1).map(([ti, p]) => [ti, p[0], S.cur]), S.cur);
+const cy0 = track(P.fileBtn[1], CUR.slice(1).map(([ti, p]) => [ti, p[1], S.cur]), S.cur);
+// drags: while held the cursor itself follows a gesture; the value follows the cursor
+const ease = (k) => k * k * (3 - 2 * k);
+function dragX(t, win, x0, x1) { const k = clamp((t - win[0]) / (win[1] - win[0] - 0.1)); return mix(x0, x1, ease(k)); }
+function cursorAt(t) {
+  let x = cx0(t), y = cy0(t);
+  if (t >= DRAG1[0] && t < DRAG1[1]) { x = dragX(t, DRAG1, slX(0.6) , slX(1) + 150); y = 382; }
+  else if (t >= DRAG1[1] && t < DRAG1[1] + 0.6) { const k = S.cur(t - DRAG1[1]); x = mix(slX(1) + 150, cx0(t), k); y = mix(382, cy0(t), k); }
+  if (t >= DRAG2[0] && t < DRAG2[1]) { x = dragX(t, DRAG2, GRIP0, GRIP0 + 46); y = 1034; }
+  else if (t >= DRAG2[1] && t < DRAG2[1] + 0.6) { const k = S.cur(t - DRAG2[1]); x = mix(GRIP0 + 46, cx0(t), k); y = mix(1034, cy0(t), k); }
+  return [x, y];
+}
+// presses: [time, hold]
+const PRESS = [[b(1), 0.12], [b(4), 0.12], [DRAG1[0], DRAG1[1] - DRAG1[0]], [b(8), 0.12], [b(11), 0.12], [DRAG2[0], DRAG2[1] - DRAG2[0]], [b(14), 0.12],
+  [b(16), 0.12], [b(17), 0.12], [b(18), 0.12], [b(19), 0.12], [b(20), 0.95], [b(22) - 0.05, 0.6], [b(23), 0.1]];
+const press = track(0, PRESS.flatMap(([a, h]) => [[a - 0.04, 1, S.quick], [a + h, 0, S.ui]]));
+
+/* ---------- states ---------- */
+// file button: label → loader → check → label
+const fb = { busy: onoff([[b(1) + 0.02, b(2) - 0.05]], S.ui), done: onoff([[b(2), b(24)]], S.ui) };
+const fbW = track(96, [[b(1) + 0.02, 38, S.snappy], [b(24), 96, S.snappy]]);
+const fbCheck = track(0, [[b(2) + 0.02, 1, S.smooth], [b(24), 0, S.snap]]);
+const fileOn = track(0, [[b(2), 1, S.ui], [b(24) + 0.2, 0, S.smooth]]);
+const islSum = track(0, [[b(3) - 0.05, 1, S.ui], [b(24), 0, S.snap]]);
+const ringV = track(0, [[b(3), 34, S.slow], [b(24), 0, S.snap]]);
+// view segmented: two edges on different springs (leading runs ahead)
+const segL = track(3, [[b(4), 103, spring(0.5, 0.1)], [b(24) + 0.3, 3, S.smooth]]);
+const segR = track(97, [[b(4), 191, spring(0.32, 0.12)], [b(24) + 0.3, 97, S.smooth]]);
+const outlineK = track(0, [[b(5), 1, S.smooth], [b(24) + 0.3, 0, S.smooth]]);
+// slider value: direct while held, springs back from wherever it was on release
+function sliderV(t) {
+  const [a, z] = DRAG1;
+  if (t >= a && t < z) { const x = cursorAt(t)[0]; const v = (x - SL.x0) / SL.w; return v > 1 ? 1 + (v - 1) * 0.55 / (1 + (v - 1) * 1.1) : v; }
+  if (t >= z) { const x = slX(1) + 150, over = (x - SL.x0) / SL.w - 1, vz = 1 + over * 0.55 / (1 + over * 1.1); const back = mix(vz, 1, S.snappy(t - z)); return t < b(24) + 0.3 ? back : mix(1, 0.6, S.smooth(t - b(24) - 0.3)); }
+  return 0.6;
+}
+// sheet segmented: A3 → A1 (edges on different springs), back when off-camera
+const shL = track(59, [[b(8), 171, spring(0.55, 0.1)], [b(24) + 0.3, 59, S.smooth]]);
+const shR = track(109, [[b(8), 221, spring(0.34, 0.12)], [b(24) + 0.3, 109, S.smooth]]);
+const planSheet = track(0, [[b(8) + 0.05, 1, S.ui], [b(24) + 0.3, 0, S.snap]]);
+const sheetPop = track(1, [[b(8) + 0.05, 0.94, S.quick], [b(8) + 0.2, 1, spring(0.5, 0.12)]]);
+const gridDraw = track(1, [[b(8) + 0.05, 0, S.snap], [b(9) - 0.05, 1, S.slow]]);
+// switch: knob stretches while it travels (two edges), track colour follows
+const swL = track(2, [[b(11), 20, spring(0.5, 0.1)], [b(24) + 0.3, 2, S.smooth]]);
+const swR = track(26, [[b(11), 44, spring(0.3, 0.12)], [b(24) + 0.3, 26, S.smooth]]);
+const swOn = track(0, [[b(11), 1, S.smooth], [b(24) + 0.3, 0, S.smooth]]);
+// calibration: grip dragged, springs back a little on release; badge
+function boxW(t) {
+  const [a, z] = DRAG2; const rest = 324 + 34;
+  if (t >= a && t < z) return 324 + (cursorAt(t)[0] - GRIP0);
+  if (t >= z) { const w = mix(324 + 46, rest, S.snappy(t - z)); return t < b(24) + 0.3 ? w : mix(rest, 324, S.smooth(t - b(24) - 0.3)); }
+  return 324;
+}
+const adj = track(0, [[b(13), 1, S.ui], [b(24) + 0.3, 0, S.snap]]);
+const badge = track(0, [[b(14), 1, S.ui], [b(24) + 0.3, 0, S.snap]]);
+const okPress = track(1, [[b(14) - 0.03, 0.95, S.quick], [b(14) + 0.1, 1, S.ui]]);
+// plan: numbers in turn, tooltip on hover
+const numsIn = (i) => track(0, [[b(10) - 0.15 + i * 0.05, 1, spring(0.4, 0.15)], [b(24) + 0.3, 0, S.snap]]);
+const NUMS = Array.from({ length: 12 }, (_, i) => numsIn(i));
+const tipOn = onoff([[b(15) + 0.05, b(16) + 0.05]], S.ui);
+// light table: grows out of the part, shrinks back into its neighbour
+const grow = track(0, [[b(16) + 0.02, 1, spring(0.55)], [b(23) + 0.02, 0, spring(0.5)]]);
+const partN = track(TARGET_PART, [[b(17), TARGET_PART + 1, S.smooth], [b(19), TARGET_PART + 2, S.smooth], [b(23) + 0.6, TARGET_PART, S.snap]]);
+// the table slides along the row: part 6 → 7 → 8
+const colT = track(1, [[b(17), 2, S.smooth], [b(19), 3, S.smooth], [b(23) + 0.6, 1, S.snap]]);
+const rowT = () => 1;
+const hpSwap = track(0, [[b(17), 1, S.ui], [b(19), 2, S.ui], [b(23) + 0.6, 0, S.snap]]);
+const doneK = track(0, [[b(18), 1, S.ui], [b(19), 0, S.snap]]);
+const doneCk = track(0, [[b(18), 1, S.smooth], [b(19), 0, S.snap]]);
+const lockFill = track(0, [[b(20), 1, (t) => clamp(t / 0.9)], [b(21), 0, S.snap]]);
+const hudLock = track(0, [[b(21), 1, S.snappy], [b(22) + 0.55, 0, S.snappy]]);
+const unFill = track(0, [[b(22) - 0.05, 1, (t) => clamp(t / 0.55)], [b(22) + 0.55, 0, S.snap]]);
+// island: pill → palette → toast → pill
+const islPal = onoff([[b(24), b(26)]], S.snappy);
+const islToast = onoff([[b(26), b(27)]], S.snappy);
+const TYPE = 'печ', typeAt = [b(25) - 0.05, b(25) + 0.1, b(25) + 0.25];
+const CMDS = ['Открыть картинку', 'Печать на A4', 'Сохранить проект', 'Сбросить калибровку', 'English'];
+const listN = track(5, [[b(25) - 0.05, 3, S.snappy], [b(25) + 0.1, 1, S.snappy], [b(26), 5, S.snap]]);
+
+/* ---------- build the static bits ---------- */
+const $ = (id) => document.getElementById(id);
+const grid = $('grid');
+const NS = 'http://www.w3.org/2000/svg';
+function lines(cols, rows, cls) {
+  const g = document.createElementNS(NS, 'g'); g.setAttribute('class', cls);
+  for (let i = 1; i < cols; i++) { const l = document.createElementNS(NS, 'line'); l.setAttribute('x1', 560 / cols * i); l.setAttribute('x2', 560 / cols * i); l.setAttribute('y1', 0); l.setAttribute('y2', 396); g.append(l); }
+  for (let j = 1; j < rows; j++) { const l = document.createElementNS(NS, 'line'); l.setAttribute('y1', 396 / rows * j); l.setAttribute('y2', 396 / rows * j); l.setAttribute('x1', 0); l.setAttribute('x2', 560); g.append(l); }
+  g.querySelectorAll('line').forEach((l) => { l.setAttribute('stroke', '#E0102F'); l.setAttribute('stroke-width', 1.4); l.setAttribute('pathLength', 1); l.setAttribute('stroke-dasharray', 1); });
+  grid.append(g); return g;
+}
+const gA = lines(3, 2, 'a'), gB = lines(4, 3, 'b');
+const pins = Array.from({ length: 12 }, (_, i) => {
+  const r = partRect(4, 3, i), g = document.createElementNS(NS, 'g');
+  g.innerHTML = `<circle r="15" fill="#E0102F"/><text text-anchor="middle" dominant-baseline="central" fill="#fff" font-family="Geist Mono" font-size="13" font-weight="500">${i + 1}</text>`;
+  g.dataset.x = r.x - sheetBox.x + r.w / 2; g.dataset.y = r.y - sheetBox.y + r.h / 2; grid.append(g); return g;
+});
+const hi = document.createElementNS(NS, 'rect'); hi.setAttribute('fill', 'rgb(224 16 47 / .08)'); grid.prepend(hi);
+$('mini').innerHTML = Array.from({ length: 12 }, (_, i) => `<i style="position:absolute;left:${(i % 4) * 20}px;top:${Math.floor(i / 4) * 13}px;width:17px;height:10px;border-radius:3px;background:rgb(17 17 16/.1)"></i>`).join('') + '<i id="miniCur" style="position:absolute;width:17px;height:10px;border-radius:3px;background:#E0102F"></i>';
+$('palList').innerHTML = '<div id="palHi" style="position:absolute;left:6px;right:6px;top:6px;height:44px;border-radius:12px;background:rgb(17 17 16/.09)"></div>' +
+  CMDS.map((c, i) => `<div class="pli" style="position:relative;height:44px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;font-size:15px">${c}${i === 1 ? '<span class="mono" style="font-size:11px;padding:4px 6px;border-radius:6px;background:rgb(17 17 16/.09);color:#6B6A65">P</span>' : ''}</div>`).join('');
+
+/* ---------- text swaps with their own enter and exit ---------- */
+function swapPair(a, c, k, dy = 8) { // k 0 → a, 1 → c
+  a.style.opacity = clamp(1 - k * 1.6); a.style.filter = `blur(${clamp(k * 1.6) * 5}px)`; a.style.transform = `translateY(${-k * dy}px)`;
+  const e = clamp((k - 0.3) / 0.7); c.style.opacity = e; c.style.filter = `blur(${(1 - e) * 5}px)`; c.style.transform = `translateY(${(1 - e) * dy}px)`;
+}
+const layer = (el, k, s = 0.97) => { el.style.opacity = clamp(k); el.style.filter = `blur(${(1 - clamp(k)) * 6}px)`; el.style.scale = mix(s, 1, clamp(k)); };
+
+/* ---------- seek: every style from t ---------- */
+function seek(t) {
+  t = ((t % T) + T) % T;
+  const c = cam(t);
+  $('world').style.transform = `translate(${720 - c.x * c.z}px, ${720 - c.y * c.z}px) scale(${c.z})`;
+
+  // island
+  const kp = clamp(islPal(t)), kt = clamp(islToast(t));
+  const iw = mix(mix(236, 600, kp), 372, kt), ihList = 60 + 12 + 44 * clamp(listN(t), 1, 5);
+  const ih = mix(mix(44, ihList, kp), 48, kt);
+  const ir = mix(mix(22, 24, kp), 24, kt);
+  const isl = $('isl'); isl.style.width = iw + 'px'; isl.style.height = ih + 'px'; isl.style.borderRadius = ir + 'px';
+  isl.style.left = 720 - iw / 2 + 'px'; isl.style.top = '32px';
+  const dimK = clamp(kp - kt); $('dim').style.opacity = dimK; $('dim').style.display = dimK > 0.01 ? 'block' : 'none';
+  const light = clamp(kp - kt); const col = Math.round(255 * light);
+  isl.style.background = `rgb(${col},${col},${col})`;
+  layer($('islIdle'), 1 - Math.max(kp, kt) * 1.4); $('islIdle').style.translate = '-50% 0';
+  layer($('islPal'), (kp - kt) * 1.4 - 0.2); $('islPal').style.translate = '-50% 0';
+  layer($('islToast'), kt * 1.4 - 0.2); $('islToast').style.translate = '-50% 0';
+  swapPair($('sumA'), $('sumB'), clamp(islSum(t)));
+  $('ring').setAttribute('stroke-dasharray', `${ringV(t)} 100`);
+  const typed = typeAt.filter((x) => t >= x).length; $('palText').textContent = t < b(26) ? TYPE.slice(0, typed) : '';
+  $('palPh').style.opacity = typed ? 0 : 1; $('caret').style.opacity = (Math.floor(t * 4) % 2 && !typed) ? 0 : 1;
+  const n = clamp(listN(t), 1, 5); document.querySelectorAll('.pli').forEach((el, i) => {
+    const keep = i === 1 || (i === 0 && n > 2.5) || (i === 3 && n > 2.5) || n > 4.5;
+    const show = i === 1 ? 1 : clamp((n - (i === 0 || i === 3 ? 2 : 4)) / 1);
+    el.style.opacity = show; el.style.filter = `blur(${(1 - show) * 4}px)`;
+    el.style.height = 44 * show + 'px'; el.style.overflow = 'hidden';
+  });
+  // highlight rides to the one left
+  const hiY = mix(44, 0, clamp((5 - n) / 3.5)); $('palHi').style.top = 6 + (n < 1.5 ? 0 : hiY) + 'px';
+
+  // file button + text
+  const bw = fbW(t); const fbtn = $('fileBtn'); fbtn.style.width = bw + 'px'; fbtn.style.left = 596 - 10 - bw + 'px';
+  const kb = clamp((96 - bw) / 58); const kd = clamp(fb.done(t));
+  layer($('fbLabel'), 1 - kb * 1.6); layer($('fbBusy'), kb * 1.4 - 0.3 - kd * 1.5); layer($('fbDone'), kd);
+  $('fbBusy').style.rotate = t * 720 + 'deg';
+  $('fbCheck').setAttribute('stroke-dashoffset', 1 - clamp(fbCheck(t)));
+  const fo = clamp(fileOn(t));
+  $('thumbBox').style.opacity = fo; $('thumbBox').style.scale = mix(0.6, 1, fo);
+  $('fileText').style.left = mix(14, 80, fo) + 'px';
+  swapPair($('fnA'), $('fnB'), fo); swapPair($('fmA'), $('fmB'), fo, 6);
+  const ok = clamp(outlineK(t)); ['thumbArt', 'planArt'].forEach((id) => { $(id).style.filter = ok > 0.02 ? `grayscale(${ok}) contrast(${1 + ok * 0.8})` : 'none'; });
+
+  // segmented view
+  const vl = segL(t), vr = segR(t); $('segViewThumb').style.left = vl + 'px'; $('segViewThumb').style.width = vr - vl + 'px';
+  // slider
+  const sv = sliderV(t); $('slFill').style.width = SL.w * Math.min(sv, 1) + 'px';
+  const stretch = Math.max(0, sv - 1); const sl = $('slFill').parentElement; sl.style.width = SL.w * (1 + stretch) + 'px'; sl.style.height = 40 * (1 - stretch * 0.8) + 'px'; sl.style.top = 242 + 20 * stretch * 0.8 + 'px';
+  $('slFill').style.width = SL.w * clamp(sv, 0, 1 + stretch) + 'px';
+  $('slVal').textContent = Math.round(clamp(sv) * 100) + ' %';
+
+  // sheet segmented, switch
+  const l2 = shL(t), r2 = shR(t); $('segSheetThumb').style.left = l2 + 'px'; $('segSheetThumb').style.width = r2 - l2 + 'px';
+  const kl = swL(t), kr = swR(t), ko = clamp(swOn(t)); $('swKnob').style.left = kl + 'px'; $('swKnob').style.width = kr - kl + 'px';
+  $('sw').style.background = `rgb(${Math.round(mix(214, 224, ko))},${Math.round(mix(212, 16, ko))},${Math.round(mix(205, 47, ko))})`;
+
+  // calibration
+  const w = boxW(t); $('cardBox').style.width = w + 'px';
+  swapPair($('adjA'), $('adjB'), clamp(adj(t)), 6);
+  const kbd = clamp(badge(t)); $('badge').style.background = `rgb(${Math.round(mix(230, 17, kbd))},${Math.round(mix(229, 17, kbd))},${Math.round(mix(225, 16, kbd))})`;
+  $('badge').style.color = kbd > 0.5 ? '#fff' : '#6B6A65'; $('badge').style.width = mix(126, 88, kbd) + 'px';
+  swapPair($('bdA'), $('bdB'), kbd, 6);
+  $('okBtn').style.scale = okPress(t);
+
+  // plan
+  const ks = clamp(planSheet(t)); swapPair($('dwA'), $('dwB'), ks, 6); swapPair($('pcA'), $('pcB'), ks, 6);
+  $('sheet').style.scale = sheetPop(t);
+  const gd = clamp(gridDraw(t));
+  gA.style.opacity = 1 - ks; gB.style.opacity = ks;
+  gB.querySelectorAll('line').forEach((l, i) => l.setAttribute('stroke-dashoffset', 1 - clamp(gd * 1.4 - i * 0.07)));
+  gA.querySelectorAll('line').forEach((l) => l.setAttribute('stroke-dashoffset', 0));
+  pins.forEach((g, i) => { const s = NUMS[i](t); g.setAttribute('transform', `translate(${g.dataset.x} ${g.dataset.y}) scale(${clamp(s, 0, 1.2)})`); g.style.opacity = clamp(s); });
+  const tk = clamp(tipOn(t)); const tipEl = $('tip');
+  tipEl.style.opacity = tk; tipEl.style.filter = `blur(${(1 - tk) * 4}px)`;
+  tipEl.style.left = tp.x - 740 + tp.w / 2 - 110 + 'px'; tipEl.style.top = tp.y - 120 - 64 + mix(8, 0, tk) + 'px';
+  hi.setAttribute('x', tp.x - sheetBox.x); hi.setAttribute('y', tp.y - sheetBox.y); hi.setAttribute('width', tp.w); hi.setAttribute('height', tp.h); hi.style.opacity = tk;
+
+  // cursor (lives in the page, stays the same size on screen)
+  const [x, y] = cursorAt(t), pr = clamp(press(t));
+  const cz = c.z; $('cursor').style.transform = `translate(${x - 4 / cz}px, ${y - 3 / cz}px) scale(${(1 / cz) * mix(1, 0.86, pr)})`;
+  $('cursor').style.opacity = 1;
+
+  // light table
+  const g = grow(t), tb = $('table');
+  if (g < 0.002) { tb.style.display = 'none'; }
+  else {
+    tb.style.display = 'block';
+    const part = partRect(4, 3, t < b(20) ? TARGET_PART : TARGET_PART + 2);
+    const [sx, sy] = toScreen(c, part.x, part.y), [ex, ey] = toScreen(c, part.x + part.w, part.y + part.h);
+    const k = clamp(g, 0, 1.05);
+    tb.style.left = mix(sx, 0, k) + 'px'; tb.style.top = mix(sy, 0, k) + 'px';
+    tb.style.width = mix(ex - sx, 1440, k) + 'px'; tb.style.height = mix(ey - sy, 1440, k) + 'px';
+    tb.style.borderRadius = mix(10, 0, k) + 'px';
+    const inner = clamp((g - 0.55) / 0.45);
+    // the sheet at 1:1 on the "screen": one part fills the frame, parts slide by
+    const pn = Math.round(partN(t)), col = colT(t), row = rowT(t);
+    const scale = 1440 / (560 / 4) * 0.56, ox = (1440 - 140 * 1440 / 140 * 0.56) / 2, oy = 250;
+    const paper = $('paper'), svg = $('tableSvg'), fr = $('frameRed');
+    const px = ox - col * (560 / 4) * scale, py = oy - row * (396 / 3) * scale;
+    paper.style.left = px + 'px'; paper.style.top = py + 'px'; paper.style.width = 560 * scale + 'px'; paper.style.height = 396 * scale + 'px';
+    svg.style.left = px + 560 * 0.04 * scale + 'px'; svg.style.top = py + 396 * 0.04 * scale + 'px'; svg.style.width = 560 * 0.92 * scale + 'px'; svg.style.height = 396 * 0.92 * scale + 'px';
+    fr.style.left = ox + 'px'; fr.style.top = oy + 'px'; fr.style.width = (560 / 4) * scale + 'px'; fr.style.height = (396 / 3) * scale + 'px';
+    $('tableArt').style.opacity = inner;
+    // hud
+    const kl2 = clamp(hudLock(t)); const hud = $('hud');
+    const hw = mix(1000, 330, kl2), hh = mix(72, 56, kl2);
+    hud.style.width = hw + 'px'; hud.style.height = hh + 'px'; hud.style.left = 720 - hw / 2 + 'px'; hud.style.top = 1300 - hh / 2 + 'px'; hud.style.borderRadius = hh / 2 + 'px';
+    hud.style.opacity = inner; hud.style.translate = `0 ${(1 - inner) * 30}px`;
+    layer($('hudFull'), 1 - kl2 * 1.5); $('hudFull').style.translate = '-50% 0';
+    layer($('hudLock'), kl2 * 1.5 - 0.3); $('hudLock').style.translate = '-50% 0';
+    const hs = hpSwap(t); swapPair($('hpA'), $('hpB'), clamp(hs)); if (hs > 1.02) { $('hpA').textContent = 'Часть 7 из 12'; $('hpB').textContent = 'Часть 8 из 12'; swapPair($('hpA'), $('hpB'), clamp(hs - 1)); } else { $('hpA').textContent = 'Часть 6 из 12'; $('hpB').textContent = 'Часть 7 из 12'; }
+    const mc = $('miniCur'); mc.style.left = (pn % 4) * 20 + 'px'; mc.style.top = Math.floor(pn / 4) * 13 + 'px';
+    const dk = clamp(doneK(t)); $('doneBtn').style.background = dk > 0.5 ? '#111110' : 'rgb(17 17 16/.05)'; $('doneBtn').style.color = dk > 0.5 ? '#fff' : '#111110';
+    $('doneIc').style.display = dk > 0.02 ? 'block' : 'none'; $('doneCheck').setAttribute('stroke-dashoffset', 1 - clamp(doneCk(t)));
+    $('lockFill').style.width = clamp(lockFill(t)) * 100 + '%'; $('lockIc').style.color = lockFill(t) > 0.55 ? '#fff' : '#111110';
+    $('unlockFill').style.width = clamp(unFill(t)) * 100 + '%'; const uf = unFill(t) > 0.45; $('unText').style.color = uf ? '#fff' : '#111110'; $('unIc').style.color = uf ? '#fff' : '#111110';
+  }
+  // over the white table the cursor is drawn above it: move it to the screen layer
+  const onTable = g > 0.6;
+  if (onTable && $('cursor').parentElement !== $('screen')) $('screen').append($('cursor'));
+  if (!onTable && $('cursor').parentElement !== $('world')) $('world').append($('cursor'));
+  if (onTable) { const [sx, sy] = toScreen(c, x, y); $('cursor').style.transform = `translate(${sx - 4}px, ${sy - 3}px) scale(${mix(1, 0.86, pr)})`; }
+}
+window.seek = seek;
+window.T = T;
+seek(0);
+</script>
+</body>
+</html>
