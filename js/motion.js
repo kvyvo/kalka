@@ -1,20 +1,12 @@
-// Motion toolkit. Everything moves on closed-form springs (js/spring.js):
-//  • Springs — several numbers on springs, one rAF, interruptible (keeps velocity)
-//  • swap — text changes with a short blur, old copy leaves, new one arrives
-//  • reveal — rows appear/disappear by animating their height, no jumps
-//  • morph — one shape moving between states: size, radius and colour spring, content swaps with blur
-//  • grow — a rect grows from an element to the whole screen (and back)
 import { spring, settleTime, SPRING } from './spring.js';
 
 const mq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 export const reduced = () => mq.matches;
-// Nothing animates until the first screen is on: the page shouldn't rearrange itself on load.
 let live = false;
 export const goLive = () => { live = true; };
 const now = () => performance.now() / 1000;
 const isPreset = (o) => o && typeof o.stiffness === 'number';
 
-/** CSS linear() easing sampled from a spring, with its duration. Cached per preset. */
 const easings = new Map();
 export function easing(preset = SPRING.snappy) {
   const key = `${preset.stiffness}|${preset.damping}`;
@@ -26,11 +18,6 @@ export function easing(preset = SPRING.snappy) {
   return easings.get(key);
 }
 
-/**
- * Named numbers on springs. `to()` starts a new spring for each key from its current
- * value and velocity, so interrupting never jumps. `onFrame(values)` runs once per frame.
- * `preset` may be a spring or a map key → spring (for two edges on different springs).
- */
 export class Springs {
   constructor(values, onFrame) {
     this.k = {};
@@ -38,7 +25,7 @@ export class Springs {
     this.onFrame = onFrame;
     this.raf = 0;
     this.tick = this.tick.bind(this);
-    this.kick(); // draw the first frame even if nothing moves yet
+    this.kick();
   }
   value(key, t = now()) {
     const s = this.k[key];
@@ -66,7 +53,6 @@ export class Springs {
     reduced() ? this.now() : this.kick();
     return this;
   }
-  /** Jump without animation (direct manipulation while dragging): applied at once. */
   set(values) {
     for (const [key, v] of Object.entries(values)) this.k[key] = { from: v, to: v, t0: 0, p: null, T: 0 };
     this.now();
@@ -84,11 +70,6 @@ export class Springs {
   }
 }
 
-/**
- * Swap an element's text with a short blur: a ghost of the old text leaves, the new one arrives.
- * The element's own text changes at once (screen readers and tests read the new value).
- * `dir` 1 = new text comes from below, -1 = from above.
- */
 export function swap(el, text, dir = 1) {
   text = String(text);
   if (el.textContent === text) return;
@@ -118,7 +99,6 @@ export function swap(el, text, dir = 1) {
   ], { duration: e.duration, easing: e.easing, delay: 50, fill: 'backwards' });
 }
 
-/** Show or hide a block by animating its height (and the parent's gap), with a blur. */
 export function reveal(el, show) {
   if (!!show === !el.hidden && !el._revealing) return;
   if (!live || reduced() || !el.animate || !el.parentElement || el.parentElement.offsetParent === null) {
@@ -139,7 +119,6 @@ export function reveal(el, show) {
   a.onfinish = () => { el._revealing = false; el.hidden = !show; };
 }
 
-/** Fade + blur one layer out and another in, used by morph(). */
 function crossfade(from, to) {
   if (from && from !== to) {
     from.setAttribute('inert', '');
@@ -159,7 +138,6 @@ function crossfade(from, to) {
   }
 }
 
-/** Any CSS colour → [r, g, b], resolved by the browser itself. */
 let probe = null;
 function rgb(color) {
   if (!probe) { probe = document.createElement('i'); probe.style.display = 'none'; document.body.append(probe); }
@@ -168,11 +146,6 @@ function rgb(color) {
   return (getComputedStyle(probe).color.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number);
 }
 
-/**
- * One shape, many states. The shape's width, height, radius and colour spring to the
- * state's layer; the layers swap with a blur. States: { name: { layer, radius?, light?, width? } }.
- * `light` 0 = dark colour, 1 = light colour (read from CSS variables at call time).
- */
 export function morph(shape, states, { dark = '--island', light = '--surface', onFrame } = {}) {
   let cur = null;
   const layers = Object.values(states).map((s) => s.layer);
@@ -198,7 +171,6 @@ export function morph(shape, states, { dark = '--island', light = '--surface', o
   }
   const api = {
     get state() { return cur; },
-    /** Go to a state (or re-measure the current one after its content changed). */
     to(name, preset = { w: SPRING.snappy, h: SPRING.snappy, r: SPRING.snappy, light: SPRING.ui }) {
       const st = states[name], prev = cur && states[cur];
       pal = colours();
@@ -211,10 +183,8 @@ export function morph(shape, states, { dark = '--island', light = '--surface', o
       shape.dataset.state = name;
       return api;
     },
-    /** Live size change of the current state (drag, stretch) without animation. */
     springs: sp,
   };
-  // content can change size on its own (web font arrives, styles load late): follow it
   const ro = new ResizeObserver((entries) => {
     if (cur && entries.some((e) => e.target === states[cur].layer)) api.to(cur);
   });
@@ -222,10 +192,6 @@ export function morph(shape, states, { dark = '--island', light = '--surface', o
   return api;
 }
 
-/**
- * A rect that grows from `fromRect` to the whole viewport while its colour goes to `toColor`,
- * or shrinks back when `reverse`. Resolves when it has (almost) settled.
- */
 export function grow(fromRect, { fromColor = '#111110', toColor = '#ffffff', fromRadius = 24, reverse = false } = {}) {
   if (reduced() || !fromRect) return Promise.resolve();
   const el = document.createElement('div');
@@ -236,7 +202,7 @@ export function grow(fromRect, { fromColor = '#111110', toColor = '#ffffff', fro
   return new Promise((resolve) => {
     let done = false;
     const sp = new Springs({ k: reverse ? 1 : 0 }, ({ k }) => {
-      const W = innerWidth, H = innerHeight, q = 1 - (1 - Math.min(1, Math.max(0, k))) ** 3; // colour arrives early
+      const W = innerWidth, H = innerHeight, q = 1 - (1 - Math.min(1, Math.max(0, k))) ** 3;
       const x = fromRect.left * (1 - k), y = fromRect.top * (1 - k);
       const w = fromRect.width + (W - fromRect.width) * k, h = fromRect.height + (H - fromRect.height) * k;
       Object.assign(el.style, {
@@ -246,7 +212,6 @@ export function grow(fromRect, { fromColor = '#111110', toColor = '#ffffff', fro
       if (!done && (reverse ? k < 0.04 : k > 0.96)) {
         done = true;
         resolve();
-        // the page underneath is ready: fade the shape out while its spring finishes
         el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).onfinish = () => {
           sp.onFrame = () => {};
           el.remove();
@@ -257,5 +222,4 @@ export function grow(fromRect, { fromColor = '#111110', toColor = '#ffffff', fro
   });
 }
 
-/** Rubber band: how far a value goes past its limit when dragged `over` px beyond it. */
 export const rubber = (over, dim = 300, c = 0.55) => (over * dim * c) / (dim + c * Math.abs(over));

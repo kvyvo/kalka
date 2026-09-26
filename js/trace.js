@@ -1,5 +1,3 @@
-// The light table: full screen, white, one part at true size, paper edge visible.
-// The HUD is one shape: full controls ↔ a compact pill when idle ↔ the lock pill.
 import { cellSize, cellPos, neighbour, nextTodo } from './geometry.js';
 import { SPRING } from './spring.js';
 import { Springs, morph, swap, grow, easing, reduced } from './motion.js';
@@ -8,10 +6,6 @@ import { t } from './i18n.js';
 const $ = (id) => document.getElementById(id);
 const RED = '#E0102F';
 
-/**
- * `ctx` gives live access to the app: get() → { S, sheet, drawing, k, view, color, pixel },
- * save(), onExit(), cellEl(n) → the part on the plan (for the zoom back).
- */
 export function createTrace(ctx) {
   const trace = $('trace'), stage = $('stage'), overlay = $('overlay'), img = $('imgView');
   const mini = $('mini'), lockEl = $('lock'), unlock = $('unlockBtn'), fill = $('unlockRing');
@@ -34,7 +28,6 @@ export function createTrace(ctx) {
   }
   const exitFull = () => { if (isFull()) document.exitFullscreen().catch(() => {}); };
 
-  /** Screen scale corrected for browser zoom when we can measure it (full screen). */
   function scale() {
     const k = g().k;
     if (!isFull()) return k;
@@ -43,7 +36,6 @@ export function createTrace(ctx) {
     return Math.abs(r - 1) > 0.01 && Math.abs(r - 1) < 0.6 ? { x: k.x * r, y: k.y * r } : k;
   }
 
-  // the sheet slides under the screen on a spring; positions snap to device pixels
   const dpr = () => devicePixelRatio || 1;
   const pos = new Springs({ x: 0, y: 0 }, ({ x, y }) => {
     stage.style.transform = `translate(${Math.round(x * dpr()) / dpr()}px, ${Math.round(y * dpr()) / dpr()}px)`;
@@ -89,7 +81,6 @@ export function createTrace(ctx) {
     img.src = S.traceColor ? color : view;
   }
 
-  /* ---------- HUD ---------- */
   const cur = $('miniCur');
   const curSp = new Springs({ x: 0, y: 0 }, ({ x, y }) => { cur.style.transform = `translate(${x}px, ${y}px)`; });
   function buildMini() {
@@ -130,7 +121,7 @@ export function createTrace(ctx) {
     $('hudStatus').innerHTML = parts.join(' ');
     $('hudStatus').hidden = !parts.length;
     placeCur(true);
-    if (hud.state === 'full') hud.to('full'); // the shape follows its content
+    if (hud.state === 'full') hud.to('full');
   }
 
   function poke() {
@@ -179,7 +170,6 @@ export function createTrace(ctx) {
   }
   const toggle = (key, fn) => { g().S[key] = !g().S[key]; ctx.save(); fn(); updateHud(); poke(); };
 
-  /* ---------- lock: the HUD becomes a pill; holding it fills it, then it lets go ---------- */
   function setLock(on) {
     locked = on;
     lockEl.hidden = !on;
@@ -209,9 +199,8 @@ export function createTrace(ctx) {
   ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => unlock.addEventListener(ev, holdEnd));
   lockEl.addEventListener('pointerdown', (e) => e.preventDefault());
 
-  /* ---------- in and out: the button or the part grows into the light table ---------- */
   function enter(n, fromEl) {
-    enterFull(); // must stay synchronous inside the click
+    enterFull();
     if (typeof n === 'number') g().S.cell = n;
     if (g().S.cell >= total()) g().S.cell = 0;
     const r = fromEl?.getBoundingClientRect();
@@ -230,7 +219,7 @@ export function createTrace(ctx) {
   }
   function exit() {
     exitFull();
-    try { wake?.release(); } catch { /* already released */ }
+    try { wake?.release(); } catch {  }
     wake = null;
     setLock(false);
     trace.hidden = true;
@@ -257,7 +246,6 @@ export function createTrace(ctx) {
   trace.addEventListener('pointerdown', poke);
   $('hud').addEventListener('pointerenter', () => { hudHover = true; });
   $('hud').addEventListener('pointerleave', () => { hudHover = false; poke(); });
-  // pinch-zoom would break the true scale
   trace.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
   trace.addEventListener('gesturestart', (e) => e.preventDefault());
 

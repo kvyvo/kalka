@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { outline } from '../js/outline.js';
 
-// 40×40 white image with a black 20×20 square in the middle
 function square() {
   const w = 40, h = 40, data = new Uint8ClampedArray(w * h * 4).fill(255);
   for (let y = 10; y < 30; y++) for (let x = 10; x < 30; x++) {

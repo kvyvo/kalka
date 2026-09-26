@@ -11,7 +11,6 @@ test('sheet presets and orientation', () => {
 });
 
 test('fitDrawing reproduces the original A1 layout', () => {
-  // original: 3:2 picture, 810 × 540 on 841 × 594
   const d = fitDrawing({ w: 841, h: 594 }, 1.5, 15.5);
   assert.deepEqual([d.w, d.h], [810, 540]);
   assert.equal(d.x, 15.5);
@@ -26,12 +25,9 @@ test('fitDrawing limited by height for tall images', () => {
 
 test('suggestGrid picks the fewest parts that fit the screen', () => {
   const drawing = { w: 810, h: 540 };
-  // MacBook Air 15 visible area ≈ 327 × 204 mm
   assert.deepEqual(suggestGrid(drawing, { w: 327, h: 204 }, 10), { cols: 3, rows: 3 });
-  // a big monitor needs fewer parts
   const g = suggestGrid(drawing, { w: 597, h: 336 }, 10);
   assert.equal(g.cols * g.rows, 4);
-  // every suggested cell really fits
   const c = cellSize(drawing, 3, 3);
   assert.ok(c.w + 20 <= 327 && c.h + 20 <= 204);
 });
@@ -59,7 +55,7 @@ test('nextTodo skips done parts and wraps', () => {
 test('printTiles covers the drawing with overlapping A4 windows', () => {
   const d = { w: 400, h: 267 }, win = { w: 190, h: 267 };
   const p = printTiles(d, win, 10);
-  assert.equal(p.cols, 3); // 180 mm step: 0..190, 180..370, 360..550
+  assert.equal(p.cols, 3);
   assert.equal(p.rows, 1);
   const last = p.tiles.at(-1);
   assert.ok(last.x + win.w >= d.w);

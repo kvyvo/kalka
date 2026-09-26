@@ -22,7 +22,6 @@
 </head>
 <body>
 
-<!-- the island: one shape for status, toasts, the command palette and confirmations -->
 <dialog id="island" aria-label="Kalka">
   <div class="isl" id="islShape">
     <button class="isl-l isl-idle" id="islIdle" type="button">
@@ -90,7 +89,6 @@
     <div class="layout" id="steps">
       <div class="steps">
 
-        <!-- 1. picture -->
         <section class="card" id="stepFile" aria-labelledby="h1">
           <header class="card-head"><span class="num">1</span><h2 id="h1" data-i18n="s1">Картинка</h2></header>
           <div class="drop" id="drop">
@@ -133,7 +131,6 @@
           <p class="note warn" id="lowRes" hidden></p>
         </section>
 
-        <!-- 2. sheet -->
         <section class="card" aria-labelledby="h2">
           <header class="card-head"><span class="num">2</span><h2 id="h2" data-i18n="s2">Лист и размер</h2></header>
           <div class="row">
@@ -184,7 +181,6 @@
           <p class="note warn" id="sizeWarn" hidden></p>
         </section>
 
-        <!-- 3. screen -->
         <section class="card" aria-labelledby="h3">
           <header class="card-head"><span class="num">3</span><h2 id="h3" data-i18n="s3">Экран</h2><span class="badge"><span class="sw-t" id="calibBadge"></span></span></header>
           <div class="row">
@@ -218,7 +214,6 @@
           <p class="note warn" id="zoomWarn" hidden></p>
         </section>
 
-        <!-- 4. parts -->
         <section class="card" aria-labelledby="h4">
           <header class="card-head"><span class="num">4</span><h2 id="h4" data-i18n="s4">Части и обводка</h2></header>
           <div class="row">
@@ -267,7 +262,6 @@
         </section>
       </div>
 
-      <!-- sheet plan -->
       <aside class="plan" aria-label="План листа">
         <div class="plan-card">
           <svg id="sheet" role="group" aria-label="Лист с сеткой частей"></svg>
@@ -284,7 +278,6 @@
 </div>
 <div class="plan-tip" id="planTip" aria-hidden="true"><b class="sw-t" id="planTipTitle"></b><span class="mono sw-t" id="planTipText"></span></div>
 
-<!-- light table -->
 <div id="trace" hidden>
   <div id="stage">
     <div id="paper"></div>

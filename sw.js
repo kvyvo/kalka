@@ -1,4 +1,3 @@
-// Offline shell. VERSION is bumped by CI on every deploy so old caches go away.
 const VERSION = 'dev';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'manifest.webmanifest', 'assets/icon.svg', 'assets/demo.svg',
@@ -18,9 +17,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   const same = url.origin === location.origin;
-  // pages: network first so updates arrive; everything else (incl. fonts and pdf.js): cache first
   if (req.mode === 'navigate') {
-    // past the HTTP cache: the page must be as fresh as the versioned scripts it points to
     e.respondWith(fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
       .then((r) => { put(req, r.clone()); return r; }).catch(() => caches.match('index.html')));
   } else if (same || /fonts\.(googleapis|gstatic)\.com|cdn\.jsdelivr\.net/.test(url.host)) {

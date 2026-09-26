@@ -1,5 +1,3 @@
-// The hero picture explains the idea without words: a sheet lies on a laptop screen,
-// the screen glows through the paper under one part, the part gets traced, the screen moves on.
 import { SPRING, fromApple } from './spring.js';
 import { Springs, swap, reduced } from './motion.js';
 import { t } from './i18n.js';
@@ -13,7 +11,6 @@ const el = (name, attrs = {}, parent) => {
 };
 
 export function hero(svg, caption) {
-  // A3 landscape sheet, the demo drawing 380 × 268.7 mm centred on it, 3 × 2 parts
   const W = 600, H = 430, S = 520 / 420, sx = 40, sy = 30, sw = 420 * S, sh = 297 * S;
   const dw = 380 * S, dh = 268.7 * S, dx = sx + (sw - dw) / 2, dy = sy + (sh - dh) / 2;
   const COLS = 3, ROWS = 2, cw = dw / COLS, ch = dh / ROWS, PAD = 16;
@@ -24,13 +21,10 @@ export function hero(svg, caption) {
   const traced = el('clipPath', { id: 'heroTraced' }, defs);
   const tracedRects = Array.from({ length: COLS * ROWS }, () => el('rect', { height: ch, width: 0 }, traced));
 
-  // the laptop screen under the paper: we see it faintly through the sheet
   const screen = el('rect', { class: 'h-screen', rx: 14, width: cw + 2 * PAD, height: ch + 2 * PAD }, svg);
   el('rect', { class: 'h-sheet', x: sx, y: sy, width: sw, height: sh, rx: 4 }, svg);
   el('image', { href: 'assets/demo.svg', x: dx, y: dy, width: dw, height: dh, class: 'h-faint' }, svg);
-  // where the screen glows, the drawing shows through clearly
   el('image', { href: 'assets/demo.svg', x: dx, y: dy, width: dw, height: dh, 'clip-path': 'url(#heroLit)' }, svg);
-  // what is already traced: pencil lines stay on the paper
   el('image', { href: 'assets/demo.svg', x: dx, y: dy, width: dw, height: dh, class: 'h-pencil', 'clip-path': 'url(#heroTraced)' }, svg);
   const grid = el('g', { class: 'h-grid' }, svg);
   for (let i = 0; i <= COLS; i++) el('line', { x1: dx + i * cw, y1: dy, x2: dx + i * cw, y2: dy + dh }, grid);
@@ -53,7 +47,7 @@ export function hero(svg, caption) {
     litRect.setAttribute('width', cw + PAD); litRect.setAttribute('height', ch + PAD);
     frame.setAttribute('x', x); frame.setAttribute('y', y);
   });
-  const wipe = (n, k) => { // tracing sweeps across the part
+  const wipe = (n, k) => {
     const p = pos(n), r = tracedRects[n];
     r.setAttribute('x', p.x); r.setAttribute('y', p.y); r.setAttribute('width', cw * k);
   };
@@ -66,16 +60,15 @@ export function hero(svg, caption) {
     });
   });
   const say = (n) => caption && swap(caption, t('heroPart', { n: n + 1, N: COLS * ROWS }));
-  if (caption) caption.textContent = t('heroPart', { n: 1, N: COLS * ROWS }); // before the first step runs
+  if (caption) caption.textContent = t('heroPart', { n: 1, N: COLS * ROWS });
 
-  if (reduced()) { // a still that tells the same story
+  if (reduced()) {
     const p = pos(2); sp.set({ x: p.x, y: p.y });
     tick.set({ c0: 1, w0: 1, c1: 1, w1: 1 });
     say(2);
     return;
   }
 
-  // the loop: move → trace (wipe) → check → next; nothing waits longer than it has to
   let n = 0, timer = 0, running = false;
   const TRACE = fromApple(0.9, 0);
   const step = () => {
@@ -92,7 +85,6 @@ export function hero(svg, caption) {
         timer = setTimeout(() => {
           n++;
           if (n < COLS * ROWS) return step();
-          // all traced: lift the pencil lines and start again
           timer = setTimeout(() => {
             tick.to(Object.fromEntries(checks.flatMap((_, i) => [[`c${i}`, 0], [`w${i}`, 0]])), SPRING.smooth);
             n = 0;

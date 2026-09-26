@@ -11,14 +11,10 @@ import { createTrace } from './trace.js';
 import { hero } from './hero.js';
 
 const $ = (id) => document.getElementById(id);
-// The page and the scripts must come from the same deploy (tools/stamp.mjs writes both).
-// A browser can hold an older page in its cache for a while and fetch newer scripts:
-// then reload once, which revalidates the page itself.
 const BUILD = 'dev';
 if (document.querySelector('meta[name=build]')?.content !== BUILD) {
   let again = true;
-  try { again = sessionStorage.getItem('kalka-reload') !== BUILD; sessionStorage.setItem('kalka-reload', BUILD); } catch { /* no storage */ }
-  // an old service worker may be the one serving the old page: let the new one take over first
+  try { again = sessionStorage.getItem('kalka-reload') !== BUILD; sessionStorage.setItem('kalka-reload', BUILD); } catch {  }
   const sw = 'serviceWorker' in navigator && location.protocol === 'https:' ? navigator.serviceWorker : null;
   const takeover = sw ? Promise.race([
     sw.register('sw.js').then((r) => r.update()).then(() => new Promise((r) => sw.addEventListener('controllerchange', r, { once: true }))),
@@ -27,7 +23,6 @@ if (document.querySelector('meta[name=build]')?.content !== BUILD) {
   if (again) takeover.then(() => location.reload());
   throw new Error(`stale page for build ${BUILD}`);
 }
-// Safari may run modules before the stylesheet is applied; everything below measures layout
 const css = document.querySelector('link[rel=stylesheet][href^="css/"]');
 if (css && !css.sheet) await new Promise((r) => { css.addEventListener('load', r, { once: true }); css.addEventListener('error', r, { once: true }); });
 const UA = navigator.userAgent;
@@ -44,11 +39,10 @@ const S = loadSettings({
 });
 const save = () => saveSettings(S);
 
-let src = null;        // opened file: { blob, url, img, w, h, physical, pages, name, svg }
-let pics = null;       // prepared pictures: { color, view, w, h, owned }
+let src = null;
+let pics = null;
 let busy = 0;
 
-/* ---------------- derived geometry ---------------- */
 const sig = () => signature(screen.width, screen.height, devicePixelRatio || 1);
 function calib() {
   let c = S.calib[sig()];
@@ -61,7 +55,6 @@ function calib() {
 function k() {
   const c = calib(), from = c.screen === 'diag' ? (c.diag ? { diag: c.diag } : null) : SCREENS.find((s) => s.id === c.screen);
   const b = baseScale(from, screen.width, screen.height);
-  // base scale is for the screen's own orientation; swap if the window is rotated
   const rotated = (innerWidth > innerHeight) !== (screen.width > screen.height);
   return rotated ? { x: b.y * c.adj, y: b.x * c.adj } : { x: b.x * c.adj, y: b.y * c.adj };
 }
@@ -80,7 +73,6 @@ function drawing() {
   }
   return fitDrawing(sh, a, S.margin);
 }
-/** Visible screen area in mm, minus a strip for the notch estimate. */
 function viewMm() {
   const notch = SCREENS.find((s) => s.id === calib().screen)?.notch || 0;
   const w = Math.max(screen.width, screen.height), h = Math.min(screen.width, screen.height);
@@ -92,15 +84,13 @@ function grid() {
   return S.grid;
 }
 function syncDone() {
-  if (!src || !pics) return; // until the picture is back, keep the saved progress
+  if (!src || !pics) return;
   const d = drawing(), key = `${src.name}|${S.grid.cols}x${S.grid.rows}|${Math.round(d.w)}x${Math.round(d.h)}`;
   if (key !== S.doneKey) { S.done = []; S.cell = 0; S.doneKey = key; }
 }
 
-/* ---------------- island ---------------- */
 const island = createIsland({ commands: (q) => commands(q), onIdleClick: () => island.palette() });
 
-/* ---------------- file: the button becomes a loader, then a check ---------------- */
 const fileBtn = morph($('fileBtn'), {
   label: { layer: $('fileBtnLabel') },
   busy: { layer: $('fileBtnBusy') },
@@ -121,7 +111,6 @@ async function useFile(file, { restoring = false } = {}) {
       S.sizeMode = src.physical ? 'file' : 'fit';
       if (src.physical) pickSheetFor(src.physical);
     }
-    // the demo is always at hand: store only the user's own files
     if (src.name === 'demo.svg') { if (!restoring) clearFile(); } else saveFile(file, src.name);
     if (S.sizeMode === 'file' && !src.physical) S.sizeMode = 'fit';
     await rebuild({ quiet: true });
@@ -137,7 +126,6 @@ async function useFile(file, { restoring = false } = {}) {
     renderFile();
   }
 }
-/** Smallest A-sheet that holds the physical drawing, orientation to match. */
 function pickSheetFor(p) {
   const land = p.w >= p.h;
   for (const name of ['A4', 'A3', 'A2', 'A1', 'A0']) {
@@ -151,12 +139,10 @@ async function loadDemo(opts) {
   await useFile(new File([await r.blob()], 'demo.svg', { type: 'image/svg+xml' }), opts);
 }
 
-/** Re-prepare pictures after view/rotate/mirror/strength change. */
 let prepSeq = 0;
 async function rebuild({ quiet = false } = {}) {
   if (!src) return;
   const my = ++prepSeq;
-  // only show the loader if it actually takes a moment
   let slowShown = false;
   const slow = quiet ? null : setTimeout(() => { island.busy(); slowShown = true; }, 140);
   const p = await prepare(src, S);
@@ -170,7 +156,6 @@ async function rebuild({ quiet = false } = {}) {
   trace.refresh();
 }
 
-/* ---------------- rendering ---------------- */
 const unit = () => (getLang() === 'en' ? 'mm' : 'мм');
 function renderFile() {
   if (!src) return;
@@ -187,7 +172,6 @@ function renderFile() {
   $('viewHint').textContent = S.view === 'bw' ? t('hintBw') : t('hintOutline');
   strength.set(S.strength);
   mirror.set(S.mirror);
-  // low resolution: fewer than 2 image px per mm of paper (≈50 dpi)
   const d = drawing(), ppm = src.svg ? Infinity : pics ? pics.w / d.w : Infinity;
   if (ppm < 2) $('lowRes').textContent = t('lowRes', { ppm: fmt(ppm, 1), max: Math.max(1, Math.round(pics.w / 2 / 10)) });
   reveal($('lowRes'), ppm < 2);
@@ -209,7 +193,6 @@ function renderSheetCtl() {
   seg.sheet.set(S.sheet); seg.land.set(S.land ? '1' : '0'); seg.sizeMode.set(S.sizeMode); seg.view.set(S.view);
 }
 
-/* calibration: the card frame and ruler spring to the new scale */
 const kSp = new Springs({ x: 0, y: 0 }, ({ x, y }) => {
   const box = $('cardBox');
   box.style.width = `${CARD.w * x}px`;
@@ -242,7 +225,6 @@ function renderCalib() {
   swap($('adjRead'), `${pct >= 0 ? '+' : '−'}${fmt(Math.abs(pct), 1)} %`);
   swap($('calibBadge'), c.checked ? t('calibChecked') : t('calibNot'));
   $('calibBadge').parentElement.classList.toggle('ok', c.checked);
-  // browser zoom: Chrome/Firefox change devicePixelRatio to an unusual value
   const dpr = Math.round((devicePixelRatio || 1) * 100);
   $('zoomWarn').textContent = MAC ? t('zoomMac') : t('zoomWin');
   reveal($('zoomWarn'), ![100, 125, 150, 175, 200, 225, 250, 300, 350].includes(dpr) && !IPAD);
@@ -267,7 +249,6 @@ function renderParts() {
   island.summary(`${S.sheet === 'custom' ? t('customShort') : S.sheet} · ${N} ${plural(N, 'parts')}`, S.done.length, N);
 }
 
-/* ---------------- the plan: a camera that follows the sheet ---------------- */
 const SVGNS = 'http://www.w3.org/2000/svg';
 const mk = (name, attrs, parent) => {
   const e = document.createElementNS(SVGNS, name);
@@ -293,7 +274,6 @@ function buildPlan(cols, rows) {
   plan.dim = [mk('line', { class: 'dl' }, dims), mk('line', { class: 'dl' }, dims), mk('text', { class: 'dt', 'text-anchor': 'middle' }, dims), mk('text', { class: 'dt', 'text-anchor': 'middle' }, dims)];
   plan.cols = cols; plan.rows = rows;
   if (reduced() || !plan.placed) return;
-  // the grid draws itself, the numbers pop in one after another
   const e = easing(fromApple(0.5, 0.12));
   plan.vl.forEach((l, i) => l.animate?.([{ scale: '1 0' }, { scale: '1 1' }], { duration: 520, delay: i * 40, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
   plan.hl.forEach((l, i) => l.animate?.([{ scale: '0 1' }, { scale: '1 1' }], { duration: 520, delay: 60 + i * 40, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
@@ -343,7 +323,6 @@ function renderPlan() {
   swap($('planCap'), `${S.sheet === 'custom' ? '' : S.sheet + ' · '}${fmt(sh.w)} × ${fmt(sh.h)} · ${g.cols} × ${g.rows} = ${N}`);
 }
 
-/* the tooltip over the plan springs from part to part */
 const tip = $('planTip');
 const tipSp = new Springs({ x: 0, y: 0, o: 0 }, ({ x, y, o }) => {
   tip.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%) scale(${0.92 + 0.08 * Math.min(1, o)})`;
@@ -374,7 +353,6 @@ function renderAll() {
   save();
 }
 
-/* ---------------- controls ---------------- */
 const seg = {};
 seg.view = segmented(document.querySelector('[data-name=view]'), (v) => { S.view = v; S.traceColor = false; rebuild(); });
 seg.sheet = segmented(document.querySelector('[data-name=sheet]'), (v) => { S.sheet = v; renderAll(); });
@@ -396,7 +374,6 @@ const margin = stretchSlider($('margin'), {
 });
 steppers();
 
-// the rotate icon turns with the picture
 const rotIcon = $('rotIcon');
 const rotSp = new Springs({ a: 0 }, ({ a }) => { rotIcon.style.rotate = `${a}deg`; });
 $('rotBtn').addEventListener('click', () => { S.rot = (S.rot + 1) % 4; rotSp.to({ a: rotSp.target('a') + 90 }, fromApple(0.45, 0.15)); rebuild(); });
@@ -409,7 +386,6 @@ num('widthCm', (v) => { S.widthCm = Math.min(1000, v); });
 num('cols', (v) => { S.grid.cols = Math.min(20, Math.round(v)); S.grid.auto = false; });
 num('rows', (v) => { S.grid.rows = Math.min(20, Math.round(v)); S.grid.auto = false; });
 
-// calibration
 $('screenSel').addEventListener('change', (e) => { const c = calib(); c.screen = e.target.value; c.adj = 1; c.checked = false; renderAll(); });
 num('diag', (v) => { const c = calib(); c.diag = Math.min(100, Math.max(5, v)); c.checked = false; });
 document.querySelectorAll('[data-adj]').forEach((b) => b.addEventListener('click', () => {
@@ -417,7 +393,6 @@ document.querySelectorAll('[data-adj]').forEach((b) => b.addEventListener('click
 }));
 $('calibOk').addEventListener('click', () => { calib().checked = true; renderAll(); island.toast(t('calibSaved'), 'ok', 2200); });
 $('calibReset').addEventListener('click', () => { const c = calib(); c.adj = 1; c.checked = false; renderAll(); });
-// drag the card frame's right edge: direct manipulation, then it settles
 $('cardGrip').addEventListener('pointerdown', (e) => {
   const grip = e.currentTarget, c = calib(), startX = e.clientX, a0 = c.adj, w0 = $('cardBox').offsetWidth;
   grip.setPointerCapture(e.pointerId);
@@ -428,7 +403,6 @@ $('cardGrip').addEventListener('pointerdown', (e) => {
   grip.addEventListener('pointerup', up, { once: true });
 });
 
-// plan → trace
 const trace = createTrace({
   get: () => ({ S, sheet: sheet(), drawing: drawing(), k: k(), view: pics?.view, color: pics?.color, pixel: !src?.svg && pics && pics.w / drawing().w < 3 }),
   save,
@@ -446,7 +420,6 @@ $('resetDone').addEventListener('click', async () => {
   if (await island.confirm(t('confirmReset'), t('confirmYes'))) { S.done = []; S.cell = 0; renderAll(); }
 });
 
-// drag & drop, paste: the island becomes the drop target
 let dragDepth = 0;
 const dragging = (on) => { document.body.classList.toggle('dragging', on); island.drop(on); };
 addEventListener('dragenter', (e) => { if ([...e.dataTransfer.types].includes('Files')) { dragDepth++; dragging(true); e.preventDefault(); } });
@@ -463,7 +436,6 @@ addEventListener('paste', (e) => {
   if (f) { e.preventDefault(); useFile(f); }
 });
 
-/* ---------------- print on A4 ---------------- */
 function printParts() {
   if (!pics) return;
   const d = drawing(), win = { w: 190, h: 267 }, ov = 10, p = printTiles(d, win, ov), N = p.tiles.length;
@@ -478,7 +450,6 @@ function printParts() {
 }
 $('printBtn').addEventListener('click', printParts);
 
-/* ---------------- project file ---------------- */
 async function exportProject() {
   if (!src) return;
   const buf = new Uint8Array(await src.blob.arrayBuffer());
@@ -509,7 +480,6 @@ async function importProject(file) {
 $('exportBtn').addEventListener('click', exportProject);
 $('importInput').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) importProject(f); e.target.value = ''; });
 
-/* ---------------- language, theme, palette ---------------- */
 function setLanguage(l) { S.lang = l; setLang(l); renderAll(); seg.view.place(false); seg.sheet.place(false); seg.land.place(false); seg.sizeMode.place(false); }
 $('langBtn').addEventListener('click', () => setLanguage(getLang() === 'en' ? 'ru' : 'en'));
 function toggleTheme() {
@@ -547,7 +517,6 @@ addEventListener('keydown', (e) => {
 addEventListener('scroll', () => document.querySelector('.top').classList.toggle('scrolled', scrollY > 4), { passive: true });
 addEventListener('resize', () => { if (!trace.open()) { renderCalib(); renderParts(); renderPlan(); } });
 
-/* ---------------- start ---------------- */
 setLang(S.lang);
 if (Object.keys(S.calib).length && !S.calib[sig()]) setTimeout(() => island.toast(t('newScreen'), 'warn', 6000), 900);
 renderAll();
@@ -555,8 +524,8 @@ hero($('heroSvg'), $('heroCap'));
 (async () => {
   const stored = await loadFile();
   if (stored) await useFile(stored, { restoring: true });
-  else await loadDemo({ restoring: S.doneKey.startsWith('demo.svg|') }); // back on the sample: keep its sheet and progress
+  else await loadDemo({ restoring: S.doneKey.startsWith('demo.svg|') });
   requestAnimationFrame(goLive);
 })();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-window.kalka = { S, k, drawing, sheet, island }; // handy for tests and the curious
+window.kalka = { S, k, drawing, sheet, island };

@@ -1,15 +1,11 @@
-// Controls with physical motion: liquid segmented controls, switches whose knob stretches,
-// sliders that rubber-band past their ends, steppers. All springs come from motion.js.
 import { SPRING, fromApple } from './spring.js';
 import { Springs, rubber } from './motion.js';
 
-const LEAD = fromApple(0.3, 0.08);  // the edge that moves first
-const TRAIL = fromApple(0.52, 0.04); // the edge that follows: the indicator stretches in between
+const LEAD = fromApple(0.3, 0.08);
+const TRAIL = fromApple(0.52, 0.04);
 
-/** Two edges on different springs: the leading edge runs ahead, the trailing one catches up. */
 const edges = (moveRight) => (moveRight ? { r: LEAD, l: TRAIL } : { l: LEAD, r: TRAIL });
 
-/** Segmented control on native radios with a liquid indicator. */
 export function segmented(root, onChange) {
   const thumb = document.createElement('span');
   thumb.className = 'thumb';
@@ -30,7 +26,6 @@ export function segmented(root, onChange) {
     sp.to({ l, r }, edges(l > sp.target('l')));
   };
   root.addEventListener('change', (e) => { place(); onChange(e.target.value); });
-  // pressing squeezes the indicator a little, like a real button
   root.addEventListener('pointerdown', () => thumb.classList.add('pressed'));
   ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => root.addEventListener(ev, () => thumb.classList.remove('pressed')));
   new ResizeObserver(() => place(false)).observe(root);
@@ -44,10 +39,6 @@ export function segmented(root, onChange) {
   };
 }
 
-/**
- * Switch: <label class="switch"><input type=checkbox role=switch><span class="sw"><i></i></span>…</label>.
- * The knob widens while pressed and its edges ride different springs when it flips.
- */
 export function makeSwitch(input, onChange) {
   const track = input.nextElementSibling, knob = track.querySelector('i');
   const geo = () => ({ W: track.offsetWidth || 46, H: track.offsetHeight || 28 });
@@ -80,11 +71,6 @@ export function makeSwitch(input, onChange) {
   };
 }
 
-/**
- * Slider that stretches like rubber when dragged past either end and springs back on release.
- * Markup: <div class="slider" role="slider" tabindex="0"><div class="sl-body"><div class="sl-fill"></div>
- *   <span class="sl-name">…</span><span class="sl-val"></span></div></div>
- */
 export function stretchSlider(el, { min = 0, max = 100, step = 1, value = min, format = (v) => v, onInput, onChange }) {
   const body = el.querySelector('.sl-body'), fill = el.querySelector('.sl-fill'), out = el.querySelector('.sl-val');
   const frac = (v) => (v - min) / (max - min);
@@ -93,7 +79,7 @@ export function stretchSlider(el, { min = 0, max = 100, step = 1, value = min, f
   const sp = new Springs({ f: frac(v), sl: 0, sr: 0 }, ({ f, sl, sr }) => {
     body.style.left = `${-sl}px`;
     body.style.right = `${-sr}px`;
-    const squeeze = Math.min(6, (sl + sr) * 0.12); // stretched rubber gets thinner
+    const squeeze = Math.min(6, (sl + sr) * 0.12);
     body.style.top = body.style.bottom = `${squeeze}px`;
     fill.style.width = `${Math.min(1, Math.max(0, f)) * 100}%`;
   });
@@ -127,7 +113,7 @@ export function stretchSlider(el, { min = 0, max = 100, step = 1, value = min, f
     if (drag !== e.pointerId) return;
     drag = null;
     el.classList.remove('active');
-    sp.to({ f: frac(v), sl: 0, sr: 0 }, SPRING.snappy); // snap to the step and let the rubber go
+    sp.to({ f: frac(v), sl: 0, sr: 0 }, SPRING.snappy);
     onChange?.(v);
   };
   el.addEventListener('pointerup', end);
@@ -141,7 +127,7 @@ export function stretchSlider(el, { min = 0, max = 100, step = 1, value = min, f
     else if (e.key === 'End') nv = max;
     else return;
     e.preventDefault();
-    if (nv === v) { // at the end already: a small rubber nudge says "that's the limit"
+    if (nv === v) {
       const side = d > 0 || e.key === 'End' ? 'sr' : 'sl';
       sp.to({ [side]: 10 }, SPRING.quick);
       setTimeout(() => sp.to({ [side]: 0 }, SPRING.snappy), 90);
@@ -157,7 +143,6 @@ export function stretchSlider(el, { min = 0, max = 100, step = 1, value = min, f
   };
 }
 
-/** −/+ buttons around a number input; holding repeats. Fires `change` on the input. */
 export function steppers(scope = document) {
   scope.querySelectorAll('.stepper').forEach((st) => {
     const input = st.querySelector('input');
@@ -184,7 +169,6 @@ export function steppers(scope = document) {
   });
 }
 
-/** Fuzzy subsequence score: lower is better, null if no match. */
 export function score(query, text) {
   const q = query.toLowerCase().replace(/\s+/g, ''), s = text.toLowerCase();
   if (!q) return 0;

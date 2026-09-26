@@ -1,4 +1,3 @@
-// README screenshots and the social preview, taken from the real app with Playwright.
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';

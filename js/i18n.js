@@ -1,6 +1,3 @@
-// Two languages. Russian static text lives in index.html; English overrides by data-i18n key.
-// Dynamic strings are functions or templates with {name} placeholders.
-
 const EN_STATIC = {
   commands: 'Commands', heroTitle: 'Your screen as a light&nbsp;table', eyebrow: 'Free · no sign-up · works offline',
   heroOpen: 'Open a picture', heroHow: 'Set up the sample', strengthLess: 'fewer', marginName: 'from the edge',
@@ -143,7 +140,6 @@ export function setLang(l) {
 
 export const getLang = () => lang;
 
-/** Dynamic string with {placeholders}. Numbers are formatted for the language. */
 export function t(key, vars = {}) {
   const s = DYN[lang][key] ?? DYN.ru[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => (typeof vars[k] === 'number' ? fmt(vars[k]) : vars[k] ?? ''));
@@ -153,7 +149,6 @@ const FORMS = {
   ru: { parts: ['часть', 'части', 'частей'] },
   en: { parts: ['part', 'parts'] },
 };
-/** Word form for a count: 1 часть, 2 части, 5 частей / 1 part, 2 parts. */
 export function plural(n, key) {
   const f = FORMS[lang][key];
   if (lang === 'en') return n === 1 ? f[0] : f[1];

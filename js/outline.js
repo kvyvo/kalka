@@ -1,16 +1,8 @@
-// Turns a photo or a coloured picture into dark lines on white, for tracing.
-// Works on plain {data, width, height} RGBA so it runs in a worker and in node tests.
-
-/**
- * @param {{data: Uint8ClampedArray, width: number, height: number}} img RGBA
- * @param {number} strength 0..100, higher = more lines
- * @returns {Uint8ClampedArray} RGBA, black lines on white, same size
- */
 export function outline({ data, width: w, height: h }, strength = 50) {
   const n = w * h;
   const g = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const a = data[i * 4 + 3] / 255; // transparent = white paper
+    const a = data[i * 4 + 3] / 255;
     g[i] = 255 - a * (255 - (0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]));
   }
   const b = blur3(g, w, h);
@@ -26,11 +18,9 @@ export function outline({ data, width: w, height: h }, strength = 50) {
       if (m > max) max = m;
     }
   }
-  // threshold relative to the strongest edge: strength 0 → 60 %, 100 → 3 %
   const t = max * (0.6 - 0.57 * Math.min(100, Math.max(0, strength)) / 100);
   const out = new Uint8ClampedArray(n * 4);
   for (let i = 0; i < n; i++) {
-    // soft edge around the threshold keeps lines smooth instead of jagged
     const v = mag[i] <= t * 0.7 ? 255 : mag[i] >= t ? 0 : 255 * (t - mag[i]) / (t * 0.3);
     out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = v;
     out[i * 4 + 3] = 255;

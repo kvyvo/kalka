@@ -1,7 +1,3 @@
-// Closed-form damped spring (mass 1). Pure function of time, so it is frame-rate
-// independent and an interrupted spring can start from any value and velocity.
-
-/** SwiftUI-style parameters → stiffness/damping. */
 export const fromApple = (duration = 0.5, bounce = 0) => ({
   stiffness: (2 * Math.PI / duration) ** 2,
   damping: 4 * Math.PI * (1 - bounce) / duration,
@@ -14,7 +10,6 @@ export const SPRING = {
   snappy: fromApple(0.5, 0.15),
 };
 
-/** Progress p(t) from 0 to 1, t in seconds; `velocity` is the initial dp/dt. */
 export function spring({ stiffness = 158, damping = 25, velocity = 0 } = {}) {
   const w0 = Math.sqrt(stiffness), z = damping / (2 * w0), v0 = -velocity;
   let x;
@@ -39,10 +34,6 @@ export function settleTime(p, eps = 1e-3) {
 
 const reduce = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
-/**
- * Animate a number with rAF. Interruptible: pass the previous handle as `from`
- * and the new spring starts at its current value and velocity.
- */
 export function animate(from, to, onUpdate, opts = SPRING.smooth) {
   let start = from, v = 0;
   if (typeof from === 'object' && from) { start = from.value; v = from.velocity; from.stop(); }

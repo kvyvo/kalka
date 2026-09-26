@@ -1,11 +1,5 @@
-// Known screens: physical panel size in mm and the CSS-px modes the OS can report.
-// px/mm = CSS px across the whole screen / panel mm — true for any scaled mode.
-// Panel mm = native px / ppi × 25.4. A signature can match several screens
-// (MBA 13 "more space" == MBA 15 default), so we return candidates and the user confirms.
-
 const mm = (px, ppi) => Math.round((px / ppi) * 25.4 * 10) / 10;
 
-// [id, name, native w, native h, ppi, modes [w, h, dpr] — default first, notch pt]
 const RAW = [
   ['mba13m2', 'MacBook Air 13″ (2022+)', 2560, 1664, 224, [[1470, 956, 2], [1280, 832, 2], [1710, 1112, 2]], 32],
   ['mba15', 'MacBook Air 15″', 2880, 1864, 224, [[1710, 1112, 2], [1440, 932, 2], [1920, 1243, 2]], 32],
@@ -27,29 +21,21 @@ export const SCREENS = RAW.map(([id, name, pw, ph, ppi, modes, notch]) => ({
   id, name, modes, notch, w: mm(pw, ppi), h: mm(ph, ppi),
 }));
 
-/** Signature of the current screen: iOS reports portrait always, so sort sides. */
 export function signature(w, h, dpr) {
   return `${Math.max(w, h)}x${Math.min(w, h)}@${Math.round(dpr * 100) / 100}`;
 }
 
-/** The screen's mode for this CSS size; the short side may be off by ≤1 % (some browsers trim it). */
 function modeOf(s, w, h, dpr) {
   const a = Math.max(w, h), b = Math.min(w, h);
   return s.modes.find(([mw, mh, md]) => Math.max(mw, mh) === a && Math.abs(Math.min(mw, mh) - b) <= b * 0.01
     && (dpr === undefined || Math.abs(md - dpr) < 0.01));
 }
 
-/** Screens whose modes include this CSS size; screens where it's the default mode come first. */
 export function candidates(w, h, dpr) {
   const idx = (s) => s.modes.indexOf(modeOf(s, w, h, dpr));
   return SCREENS.filter((s) => modeOf(s, w, h, dpr)).sort((a, b) => idx(a) - idx(b));
 }
 
-/**
- * Base px/mm (before the user's card correction) for a screen of `w`×`h` CSS px.
- * `source` is a known screen or `{diag}` in inches; falls back to CSS 96 dpi.
- * Returns separate x/y scales: some scaled modes have non-square pixels.
- */
 export function baseScale(source, w, h) {
   const long = Math.max(w, h), short = Math.min(w, h);
   if (source && source.w) {
@@ -64,5 +50,4 @@ export function baseScale(source, w, h) {
   return { x: 96 / 25.4, y: 96 / 25.4 };
 }
 
-/** Physical size of the screen in mm for a given scale. */
 export const screenMm = (w, h, k) => ({ w: w / k.x, h: h / k.y });

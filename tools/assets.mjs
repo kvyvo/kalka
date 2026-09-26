@@ -1,4 +1,3 @@
-// Renders PNG icons and the social preview from assets/icon.svg with Playwright.
 import { chromium } from 'playwright';
 import { readFile } from 'node:fs/promises';
 

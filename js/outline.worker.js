@@ -5,9 +5,8 @@ self.onmessage = ({ data: { id, img, strength, bw } }) => {
   self.postMessage({ id, data: out, width: img.width, height: img.height }, [out.buffer]);
 };
 
-// Plain black/white by brightness: for drawings that already have lines.
 function threshold({ data }, strength) {
-  const t = 40 + strength * 1.8; // 0 → 40, 100 → 220
+  const t = 40 + strength * 1.8;
   const out = new Uint8ClampedArray(data.length);
   for (let i = 0; i < data.length; i += 4) {
     const a = data[i + 3] / 255;

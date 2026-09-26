@@ -1,5 +1,3 @@
-// Browser acceptance checks from the tester's checklist. Run: npm run e2e
-// Starts its own static server, drives Chromium through Playwright.
 import { chromium, webkit, firefox } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -7,7 +5,6 @@ import { extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
-// SITE=_site tests the deploy build (versioned URLs); BROWSER=webkit is Safari's engine
 const root = process.env.SITE ? join(process.cwd(), process.env.SITE) : join(dirname(fileURLToPath(import.meta.url)), '..');
 const engine = { chromium, webkit, firefox }[process.env.BROWSER || 'chromium'];
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
@@ -25,7 +22,6 @@ const browser = await engine.launch();
 console.log(`${engine.name()} · ${root}`);
 let passed = 0, failed = 0;
 async function check(name, opts, fn) {
-  // reduced motion by default: springs land at once, so checks read final values; one check below runs with motion on
   const ctx = await browser.newContext({ locale: 'ru-RU', reducedMotion: 'reduce', ...opts });
   const page = await ctx.newPage();
   const errors = [];
@@ -84,7 +80,6 @@ await check('all A sheets and a custom one', {}, async (page) => {
   await page.fill('#customW', '1200'); await page.locator('#customW').dispatchEvent('change');
   await page.fill('#customH', '530'); await page.locator('#customH').dispatchEvent('change');
   assert.match((await text(page, '#planCap')).replace(/ /g, ' '), /1 200 × 530/);
-  // fit keeps the aspect ratio of the picture
   const r = await page.evaluate(() => { const d = window.kalka.drawing(); return d.w / d.h; });
   assert.ok(Math.abs(r - 380 / 268.7) < 0.01);
 });
@@ -130,10 +125,10 @@ await check('tracing: keys, Russian layout, lock, Enter = done and next, white t
   assert.match(await text(page, '#hudPart'), /Часть 1 из/);
   await page.keyboard.press('ArrowRight');
   assert.match(await text(page, '#hudPart'), /Часть 2 из/);
-  await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft'); // stops at the edge
+  await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowLeft');
   assert.match(await text(page, '#hudPart'), /Часть 1 из/);
   const color = await page.evaluate(() => window.kalka.S.traceColor);
-  await page.keyboard.down('KeyC'); await page.keyboard.up('KeyC'); // same code on a Russian layout ("с")
+  await page.keyboard.down('KeyC'); await page.keyboard.up('KeyC');
   assert.notEqual(await page.evaluate(() => window.kalka.S.traceColor), color);
   await page.keyboard.press('Enter');
   assert.match(await text(page, '#hudPart'), /Часть 2 из/);
@@ -141,7 +136,6 @@ await check('tracing: keys, Russian layout, lock, Enter = done and next, white t
   await page.click('#bLock', { force: true });
   await page.keyboard.press('Space'); await page.keyboard.press('Enter');
   assert.match(await text(page, '#hudPart'), /Часть 2 из/);
-  // the true size: 100 mm control bar
   const k = await page.evaluate(() => window.kalka.k());
   assert.ok(Math.abs(await box(page, '#ctlBar span') - 100 * k.x) < 1);
   await page.reload(); await page.waitForFunction(() => window.kalka);
@@ -194,22 +188,18 @@ await check('with motion on: springs and morphs land exactly on their targets', 
   const settle = () => page.waitForTimeout(1300);
   await page.click('[data-name=sheet] input[value=A0] + span');
   await settle();
-  // the liquid indicator ends exactly under the chosen option
   const [th, lab] = await page.evaluate(() => {
     const a = document.querySelector('[data-name=sheet] .thumb').getBoundingClientRect();
     const b = document.querySelector('[data-name=sheet] input[value=A0]').closest('label').getBoundingClientRect();
     return [[a.left, a.width], [b.left, b.width]];
   });
   assert.ok(Math.abs(th[0] - lab[0]) < 0.5 && Math.abs(th[1] - lab[1]) < 0.5, `thumb ${th} label ${lab}`);
-  // the plan's camera settles on the A0 sheet (landscape 1189 × 841)
   const vb = (await page.getAttribute('#sheet', 'viewBox')).split(' ').map(Number);
   assert.ok(Math.abs(vb[2] - (1189 + 118.9 + 35.67)) < 0.1, `viewBox ${vb}`);
-  // the calibration frame springs to the new scale
   await page.click('[data-adj="0.005"]');
   await settle();
   const w = await box(page, '#cardBox');
   assert.ok(Math.abs(w - 433.4 * 1.005) < 1.5, `card ${w}`);
-  // the island grows into the palette and shrinks back into the pill
   await page.keyboard.press('ControlOrMeta+k');
   await settle();
   assert.equal(await page.getAttribute('#islShape', 'data-state'), 'palette');
@@ -217,7 +207,6 @@ await check('with motion on: springs and morphs land exactly on their targets', 
   await page.keyboard.press('Escape');
   await settle();
   assert.equal(await page.getAttribute('#islShape', 'data-state'), 'idle');
-  // text swaps leave no ghost copies behind
   assert.equal(await page.evaluate(() => [...document.body.children].filter((e) => e.getAttribute('aria-hidden') === 'true' && e.style.position === 'fixed').length), 0);
 });
 

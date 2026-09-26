@@ -1,12 +1,7 @@
-// Stamps a deploy with its version: every module, stylesheet and worker URL gets ?v=<version>.
-// Without it a browser can mix modules from two deploys (one from its cache, one fresh)
-// and an import of a name that only the old file had breaks the whole page.
-//   node tools/stamp.mjs <site dir> <version>
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Relative .js specifiers in import/export/dynamic import/new URL get the version. */
 export const stampJs = (s, v) => s
   .replace(/(from\s+['"])(\.{1,2}\/[^'"?]+\.js)(['"])/g, `$1$2?v=${v}$3`)
   .replace(/(import\(\s*['"])(\.{1,2}\/[^'"?]+\.js)(['"])/g, `$1$2?v=${v}$3`)
@@ -14,7 +9,6 @@ export const stampJs = (s, v) => s
 export const stampHtml = (s, v) => s
   .replace(/((?:src|href)=")((?:js|css)\/[^"?]+\.(?:js|css))(")/g, `$1$2?v=${v}$3`)
   .replace(/<meta name="build" content="[^"]*">/, `<meta name="build" content="${v}">`);
-/** app.js knows its build and compares it with the page's. */
 export const stampBuild = (s, v) => s.replace(/const BUILD = '[^']*';/, `const BUILD = '${v}';`);
 export const stampSw = (s, v) => s
   .replace(/const VERSION = '[^']*'/, `const VERSION = '${v}'`)

@@ -3,8 +3,6 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { stampJs, stampHtml, stampSw, stampBuild } from '../tools/stamp.mjs';
 
-// A browser that mixes modules from two deploys breaks on the first import that changed
-// ("Importing binding name 'toast' is not found" in Safari). Every relative URL must be versioned.
 const REL = /(?:from\s+|import\(\s*|new URL\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g;
 
 test('every relative module URL in js/ gets the version', async () => {

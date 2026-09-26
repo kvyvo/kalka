@@ -1,11 +1,7 @@
-// Opening files and preparing the picture: rotate/mirror, outline or black-and-white.
-// Everything happens locally; nothing is uploaded.
-
-const MAX_PX = 4096 * 4096; // iOS canvas limit, applied everywhere
-const MAX_WORK_PX = 8e6;    // outline runs on at most 8 Mpx to stay fast on weak laptops
+const MAX_PX = 4096 * 4096;
+const MAX_WORK_PX = 8e6;
 const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/';
 
-/** Decodes a Blob into an <img>. Rejects with 'decode' if the browser can't read it. */
 function decode(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -15,7 +11,6 @@ function decode(url) {
   });
 }
 
-/** Physical size from an SVG root with real units, in mm, or null. */
 function svgSize(text) {
   const root = new DOMParser().parseFromString(text, 'image/svg+xml').documentElement;
   const unit = { mm: 1, cm: 10, in: 25.4, pt: 25.4 / 72, pc: 25.4 / 6 };
@@ -32,9 +27,8 @@ async function renderPdf(blob) {
   pdfjs.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.mjs';
   const doc = await pdfjs.getDocument({ data: await blob.arrayBuffer() }).promise;
   const page = await doc.getPage(1);
-  const base = page.getViewport({ scale: 1 }); // 1 unit = 1 pt
+  const base = page.getViewport({ scale: 1 });
   const physical = { w: (base.width / 72) * 25.4, h: (base.height / 72) * 25.4 };
-  // ponytail: one raster of the first page up to 16.7 Mpx; tile rendering if people need A0 drawings at full detail
   const scale = Math.min(8, Math.sqrt(MAX_PX / (base.width * base.height)));
   const vp = page.getViewport({ scale });
   const c = document.createElement('canvas');
@@ -47,10 +41,6 @@ async function renderPdf(blob) {
   return { blob: png, physical, pages: doc.numPages };
 }
 
-/**
- * Opens a user file. Returns { blob, url, img, w, h, physical, pages }.
- * `physical` is the size stored in the file itself (SVG units, PDF page), in mm.
- */
 export async function openFile(file) {
   let blob = file, physical = null, pages = 1;
   const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
@@ -63,7 +53,6 @@ export async function openFile(file) {
     await img.decode?.().catch(() => {});
     let w = img.naturalWidth, h = img.naturalHeight;
     if (isSvg) {
-      // vector: pick a render size near 8 Mpx so rotated/outlined versions stay sharp
       const aspect = physical ? physical.w / physical.h : (w && h ? w / h : 1);
       h = Math.round(Math.sqrt(MAX_WORK_PX / aspect)); w = Math.round(h * aspect);
     }
@@ -85,7 +74,6 @@ function runWorker(img, strength, bw) {
   });
 }
 
-/** Draws the source rotated (quarter turns) and mirrored into a canvas of at most `maxPx`. */
 function transformed(src, rot, mirror, maxPx) {
   const k = Math.min(1, Math.sqrt(maxPx / (src.w * src.h)));
   const sw = Math.round(src.w * k), sh = Math.round(src.h * k);
@@ -103,12 +91,6 @@ function transformed(src, rot, mirror, maxPx) {
 
 const toUrl = (c) => new Promise((r) => c.toBlob((b) => { c.width = c.height = 0; r(URL.createObjectURL(b)); }, 'image/png'));
 
-/**
- * Builds the pictures shown on screen.
- * Returns { color, view, w, h }: `color` is the rotated/mirrored original,
- * `view` is what the user traces (same as color for "original").
- * Caller revokes URLs it no longer needs (`owned` lists the ones created here).
- */
 export async function prepare(src, { view, strength, rot, mirror }) {
   const owned = [];
   let color = src.url, w = src.w, h = src.h;

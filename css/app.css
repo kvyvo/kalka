@@ -1,12 +1,10 @@
-/* Kalka — warm grey canvas, black and white components, one accent for guides and "on".
-   Motion lives in JS springs (js/motion.js); CSS only uses the spring sampled into linear(). */
 :root {
   color-scheme: light;
   --canvas: #ECEAE4;
   --surface: #FFFFFF;
   --surface-2: #F4F3EF;
-  --well: #E3E1DA;          /* segmented track, slider track */
-  --track: #D6D4CD;         /* switch off */
+  --well: #E3E1DA;
+  --track: #D6D4CD;
   --line: rgb(17 17 16 / .08);
   --fill: rgb(17 17 16 / .05);
   --fill-2: rgb(17 17 16 / .09);
@@ -61,12 +59,10 @@ a { color: inherit; }
 .muted { color: var(--ink-2); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .sw-t { display: inline-block; }
-/* one icon language: 16 px grid, 1.6 stroke, round ends */
 .ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 kbd { font: 500 11px/1 var(--mono); padding: 4px 6px; border-radius: 6px; background: var(--fill-2); color: var(--ink-2); }
 
-/* ---------- island ---------- */
 #island {
   position: fixed; inset: auto; top: max(10px, env(safe-area-inset-top)); left: 50%; translate: -50% 0;
   margin: 0; padding: 0; border: 0; background: none; overflow: visible; max-width: none; max-height: none;
@@ -114,7 +110,6 @@ kbd { font: 500 11px/1 var(--mono); padding: 4px 6px; border-radius: 6px; backgr
 .isl-confirm { display: grid; gap: 18px; padding: 22px; color: var(--ink); }
 .isl-confirm p { margin: 0; font-size: 15.5px; line-height: 1.45; }
 
-/* ---------- top ---------- */
 .top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; height: 58px; padding: 0 max(18px, env(safe-area-inset-left)); background: color-mix(in srgb, var(--canvas) 86%, transparent); backdrop-filter: saturate(1.5) blur(16px); -webkit-backdrop-filter: saturate(1.5) blur(16px); border-bottom: 1px solid transparent; transition: border-color .3s; }
 .top.scrolled { border-bottom-color: var(--line); }
 .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; font-weight: 600; font-size: 16px; letter-spacing: -.01em; }
@@ -123,7 +118,6 @@ kbd { font: 500 11px/1 var(--mono); padding: 4px 6px; border-radius: 6px; backgr
 .plain { display: inline-flex; align-items: center; gap: 8px; min-height: var(--hit); min-width: var(--hit); justify-content: center; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); cursor: pointer; text-decoration: none; font-size: 13.5px; font-weight: 500; transition: background-color .2s, color .2s; }
 .plain:hover { background: var(--fill); color: var(--ink); }
 
-/* ---------- hero ---------- */
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 max(18px, env(safe-area-inset-left)) 56px; }
 .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 40px; align-items: center; padding: 48px 0 56px; }
 @media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 32px; } }
@@ -144,7 +138,6 @@ h1 { font: 600 clamp(42px, 6.2vw, 80px)/.98 var(--font); letter-spacing: -.048em
 .hero-cap { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; font: 500 12.5px var(--mono); color: var(--ink-2); }
 .hero-cap .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
-/* ---------- layout ---------- */
 .layout { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } .plan { order: -1; } }
 .steps { display: grid; gap: 16px; min-width: 0; }
@@ -166,7 +159,6 @@ h1 { font: 600 clamp(42px, 6.2vw, 80px)/.98 var(--font); letter-spacing: -.048em
 .privacy { display: flex; gap: 8px; align-items: center; margin: -6px 0 0; font-size: 13px; color: var(--ink-2); }
 .privacy .ic { width: 14px; height: 14px; }
 
-/* ---------- buttons ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--hit); padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 500; font-size: 14px; white-space: nowrap; text-decoration: none; transition: scale var(--spring-dur) var(--spring), background-color .2s; }
 .btn:active, .chip:active, .plain:active { scale: .96; transition-duration: 90ms; }
 .btn.primary { background: var(--ink); color: var(--on-ink); }
@@ -183,7 +175,6 @@ h1 { font: 600 clamp(42px, 6.2vw, 80px)/.98 var(--font); letter-spacing: -.048em
 .btnrow.end { justify-content: flex-end; }
 .linkbtn { background: none; border: 0; padding: 4px 2px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13.5px; }
 
-/* the file button: label → loader → check, one shape */
 .morph-btn { position: relative; display: block; flex: none; overflow: hidden; background: var(--ink); color: var(--on-ink); cursor: pointer; --btn: var(--ink); }
 .mb-l { position: absolute; left: 50%; top: 0; translate: -50% 0; height: 38px; display: grid; place-items: center; white-space: nowrap; font-size: 14px; font-weight: 500; }
 #fileBtnLabel { padding: 0 18px; }
@@ -191,7 +182,6 @@ h1 { font: 600 clamp(42px, 6.2vw, 80px)/.98 var(--font); letter-spacing: -.048em
 .mb-busy svg, .mb-done svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .mb-done path { stroke-dasharray: 1; stroke-dashoffset: 1; }
 
-/* ---------- segmented: native radios + a liquid indicator ---------- */
 .seg { position: relative; display: inline-flex; flex-wrap: wrap; padding: 3px; border-radius: 999px; background: var(--well); max-width: 100%; justify-self: start; isolation: isolate; }
 .seg label { position: relative; cursor: pointer; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
@@ -204,7 +194,6 @@ h1 { font: 600 clamp(42px, 6.2vw, 80px)/.98 var(--font); letter-spacing: -.048em
 :root[data-theme="dark"] .seg .thumb { background: #48484A; }
 @media (forced-colors: active) { .seg input:checked + span { outline: 2px solid; } .seg .thumb { display: none; } }
 
-/* ---------- switch ---------- */
 .switch { display: inline-flex; align-items: center; gap: 10px; min-height: var(--hit); cursor: pointer; font-size: 13.5px; font-weight: 500; -webkit-tap-highlight-color: transparent; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
 .sw { position: relative; width: 46px; height: 28px; border-radius: 999px; background: var(--track); flex: none; transition: background-color var(--spring-dur) var(--spring); }
@@ -212,18 +201,16 @@ h1 { font: 600 clamp(42px, 6.2vw, 80px)/.98 var(--font); letter-spacing: -.048em
 .switch input:checked + .sw { background: var(--accent); }
 .switch input:focus-visible + .sw { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-/* ---------- slider: stretches like rubber past its ends ---------- */
 .slider { position: relative; height: 40px; cursor: grab; touch-action: none; outline: none; min-width: 0; -webkit-tap-highlight-color: transparent; }
 .slider.active { cursor: grabbing; }
 .sl-body { position: absolute; left: 0; right: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--well); overflow: hidden; }
 .sl-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); border-radius: 999px 0 0 999px; }
 .sl-name, .sl-val { position: absolute; top: 50%; translate: 0 -50%; font-size: 13px; font-weight: 500; pointer-events: none; }
-.sl-name, .sl-val { color: #fff; mix-blend-mode: difference; } /* readable over the fill and the track, in both themes */
+.sl-name, .sl-val { color: #fff; mix-blend-mode: difference; }
 .sl-name { left: 16px; }
 .sl-val { right: 16px; font-size: 12.5px; opacity: .75; }
 .slider:focus-visible .sl-body { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-/* ---------- inputs ---------- */
 .select { position: relative; min-width: 0; }
 .select select { appearance: none; width: 100%; min-height: var(--hit); border-radius: 999px; border: 0; background: var(--fill); padding: 0 36px 0 14px; font-size: 14px; font-weight: 500; cursor: pointer; }
 .select .ic { position: absolute; right: 12px; top: 50%; translate: 0 -50%; pointer-events: none; color: var(--ink-2); }
@@ -237,16 +224,14 @@ h1 { font: 600 clamp(42px, 6.2vw, 80px)/.98 var(--font); letter-spacing: -.048em
 .stepper .num-input { width: 46px; text-align: center; background: none; padding: 0 2px; -moz-appearance: textfield; }
 .stepper .num-input::-webkit-inner-spin-button, .stepper .num-input::-webkit-outer-spin-button { -webkit-appearance: none; }
 
-/* ---------- file ---------- */
 .drop { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 10px 10px 10px 10px; border-radius: 22px; background: var(--surface-2); }
 .drop img { width: 56px; height: 56px; object-fit: cover; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px var(--line); }
-.drop-text { display: grid; min-width: 0; gap: 2px; grid-column: 2; } /* fixed columns: the thumbnail may be hidden */
+.drop-text { display: grid; min-width: 0; gap: 2px; grid-column: 2; }
 .drop .morph-btn { grid-column: 3; }
 .drop-text b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .drop-text span { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 body.dragging #setup { filter: blur(2px); opacity: .6; transition: filter .3s, opacity .3s; }
 
-/* ---------- calibration ---------- */
 .calib { display: grid; gap: 16px; }
 .cardzone { overflow-x: auto; padding: 2px 14px 4px 2px; }
 .cardbox { position: relative; display: grid; place-items: center; border: 2px solid var(--ink); color: var(--ink-2); font-size: 13px; background: repeating-linear-gradient(135deg, transparent 0 9px, var(--fill-2) 9px 10px); touch-action: none; }
@@ -262,7 +247,6 @@ body.dragging #setup { filter: blur(2px); opacity: .6; transition: filter .3s, o
 .calib-ctrl .fine .chip:hover { background: var(--fill-2); }
 .calib-ctrl .fine .mono { min-width: 58px; text-align: center; font-size: 12.5px; }
 
-/* ---------- parts ---------- */
 .startrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
 .tools { gap: 6px; }
 .more { border-radius: 18px; background: var(--surface-2); }
@@ -277,7 +261,6 @@ body.dragging #setup { filter: blur(2px); opacity: .6; transition: filter .3s, o
 .coords dd { margin: 0 0 6px; overflow-wrap: anywhere; }
 .tips { padding-left: 16px; display: grid; gap: 8px; }
 
-/* ---------- plan ---------- */
 .plan { position: sticky; top: 74px; min-width: 0; }
 .plan-card { background: var(--surface); border-radius: 28px; padding: 18px; box-shadow: var(--shadow); }
 #sheet { width: 100%; height: auto; max-height: calc(100vh - 160px); aspect-ratio: 1.3; }
@@ -303,10 +286,8 @@ body.dragging #setup { filter: blur(2px); opacity: .6; transition: filter .3s, o
 
 .foot { display: flex; gap: 16px; justify-content: center; padding: 48px 0 0; font-size: 13px; color: var(--ink-2); }
 
-/* setup ↔ light table: a rect grows from the button/part to the whole screen */
 .grow-fx { position: fixed; left: 0; top: 0; z-index: 55; pointer-events: none; }
 
-/* ---------- light table (always white) ---------- */
 #trace { position: fixed; inset: 0; z-index: 50; background: #FFFFFF; overflow: hidden; color-scheme: light; touch-action: none; user-select: none; -webkit-user-select: none; forced-color-adjust: none; color: #111110; --hud-bg: #FFFFFF; --ink: #111110; --ink-2: #6B6A65; --fill: rgb(17 17 16 / .05); --fill-2: rgb(17 17 16 / .09); }
 #trace.idle, #trace.idle * { cursor: none; }
 #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
@@ -350,7 +331,6 @@ body.dragging #setup { filter: blur(2px); opacity: .6; transition: filter .3s, o
 .hud-lock i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #111110; }
 .hud-lock.holding { color: #fff; transition: color .6s; }
 
-/* ---------- print: parts on A4 at 1:1 ---------- */
 #printArea { display: none; }
 @media print {
   @page { size: A4 portrait; margin: 0; }

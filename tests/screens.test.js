@@ -7,7 +7,6 @@ test('MacBook Air 13 default mode is recognised', () => {
   const c = candidates(1470, 956, 2);
   assert.deepEqual(c.map((s) => s.id), ['mba13m2']);
   const k = baseScale(c[0], 1470, 956);
-  // tester checklist: card frame ≈ 85.6 × 1470 / 290.3 CSS px
   assert.ok(Math.abs(85.6 * k.x - 433.4) < 1.5);
 });
 
@@ -34,7 +33,7 @@ test('iPad works in both orientations', () => {
 
 test('diagonal fallback: 15.6″ 1366×768 laptop', () => {
   const k = baseScale({ diag: 15.6 }, 1366, 768);
-  assert.ok(Math.abs(85.6 * k.x - 340) < 7); // tester: ≈340 px ±2 %
+  assert.ok(Math.abs(85.6 * k.x - 340) < 7);
 });
 
 test('unknown screen falls back to CSS 96 dpi', () => {

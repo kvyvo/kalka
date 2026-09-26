@@ -1,6 +1,3 @@
-// The island: one shape at the top of the page that becomes whatever the moment needs —
-// the project summary, a loader, a check, a toast, the ⌘K palette, a confirmation, a drop target.
-// It is a <dialog>: shown non-modal normally, modal (focus trap, Esc, backdrop) for palette/confirm.
 import { SPRING } from './spring.js';
 import { Springs, morph, swap } from './motion.js';
 import { score } from './ui.js';
@@ -35,7 +32,6 @@ export function createIsland({ commands, onIdleClick }) {
     modal(false);
     go('idle');
   }
-  // Esc and backdrop clicks close the palette/confirmation back into the pill
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); dismiss(); });
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dismiss(); });
   function dismiss() {
@@ -44,17 +40,15 @@ export function createIsland({ commands, onIdleClick }) {
   }
   $('islIdle').addEventListener('click', () => onIdleClick?.());
 
-  /* ---------- summary ---------- */
   const ring = $('islRingFg');
   function summary(text, done = 0, total = 0) {
     swap($('islSummary'), text);
     const f = total ? done / total : 0;
     ring.style.strokeDasharray = `${f * 100} 100`;
     $('islRing').classList.toggle('full', total > 0 && done === total);
-    if (m.state === 'idle') m.to('idle'); // width follows the new text
+    if (m.state === 'idle') m.to('idle');
   }
 
-  /* ---------- busy → done ---------- */
   let busyCount = 0;
   function busy() {
     busyCount++;
@@ -72,7 +66,6 @@ export function createIsland({ commands, onIdleClick }) {
     timer = setTimeout(() => (msg ? toast(msg, kind) : idle()), 700);
   }
 
-  /* ---------- toast ---------- */
   function toast(msg, kind = 'ok', ms) {
     if (m.state === 'palette' || m.state === 'confirm') modal(false);
     dlg.classList.remove('away');
@@ -84,13 +77,11 @@ export function createIsland({ commands, onIdleClick }) {
   }
   $('islToast').addEventListener('click', idle);
 
-  /* ---------- drop target ---------- */
   function drop(on) {
     if (on && m.state !== 'drop') { modal(false); dlg.classList.remove('away'); go('drop'); }
     else if (!on && m.state === 'drop') idle();
   }
 
-  /* ---------- confirm ---------- */
   function confirm(text, yes) {
     $('confirmText').textContent = text;
     $('confirmYes').textContent = yes;
@@ -110,7 +101,6 @@ export function createIsland({ commands, onIdleClick }) {
     if (b) answer(b.value === 'yes');
   });
 
-  /* ---------- ⌘K palette ---------- */
   const input = $('palInput'), list = $('palList'), hi = $('palHi');
   let items = [], sel = 0;
   const hiSp = new Springs({ y: 0, h: 0, o: 0 }, ({ y, h, o }) => {
@@ -135,7 +125,7 @@ export function createIsland({ commands, onIdleClick }) {
       : `<li class="empty">${t('cmdNothing')}</li>`;
     input.setAttribute('aria-activedescendant', items.length ? `pal${sel}` : '');
     moveHi(false);
-    if (m.state === 'palette') m.to('palette'); // height follows the list
+    if (m.state === 'palette') m.to('palette');
   }
   function select(i) {
     sel = Math.max(0, Math.min(items.length - 1, i));
@@ -148,8 +138,7 @@ export function createIsland({ commands, onIdleClick }) {
     if (!c) return;
     modal(false);
     const res = c.run();
-    if (m.state !== 'palette') return; // the command took the island over (loader, confirmation…)
-    // otherwise the palette turns straight into a note of what happened
+    if (m.state !== 'palette') return;
     if (c.toast !== false) toast(typeof res === 'string' ? res : c.title, 'ok', 1600);
     else idle();
   }
@@ -177,7 +166,6 @@ export function createIsland({ commands, onIdleClick }) {
   return {
     summary, busy, done, toast, drop, confirm, palette, idle,
     get state() { return m.state; },
-    /** Keep the idle pill out of the way (tracing): it slides up, other states still show. */
     away(on) { away = on; dlg.classList.toggle('away', on && m.state === 'idle'); },
   };
 }
