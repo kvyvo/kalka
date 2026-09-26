@@ -1,7 +1,5 @@
 node_modules/
 .research/view.html
-promo/out/
 .DS_Store
 .research/
 .claude/
-promo/music.wav

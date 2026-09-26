@@ -15,8 +15,8 @@ const server = createServer(async (req, res) => {
 const url = `http://localhost:${server.address().port}/`;
 const b = await chromium.launch();
 async function shot(name, { theme = 'light', lang = 'ru', w = 1440, h = 900, setup, clip } = {}) {
-  const p = await b.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2, colorScheme: theme, screen: { width: 1710, height: 1112 } });
-  await p.addInitScript((l) => localStorage.setItem('kalka-v1', JSON.stringify({ lang: l, sheet: 'A1', sizeMode: 'fit' })), lang);
+  const p = await b.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2, colorScheme: theme, reducedMotion: 'reduce', screen: { width: 1710, height: 1112 } });
+  await p.addInitScript((l) => localStorage.setItem('kalka-v1', JSON.stringify({ lang: l })), lang);
   await p.goto(url);
   await p.waitForFunction(() => window.kalka && document.getElementById('thumb').src);
   await p.evaluate(() => document.fonts.ready);
@@ -34,6 +34,6 @@ await shot('docs/trace.png', { setup: async (p) => {
   await p.click('#startBtn');
   await p.mouse.move(700, 500);
 } });
-await shot('assets/og.png', { w: 1200, h: 630, setup: (p) => p.evaluate(() => { document.querySelector('.hero').style.paddingTop = '56px'; }) });
+await shot('assets/og.png', { w: 1200, h: 630, setup: (p) => p.evaluate(() => { document.querySelector('.hero').style.paddingTop = '40px'; }) });
 await b.close(); server.close();
 console.log('ok');

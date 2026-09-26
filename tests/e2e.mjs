@@ -22,7 +22,8 @@ const URL_ = `http://localhost:${server.address().port}/`;
 const browser = await chromium.launch();
 let passed = 0, failed = 0;
 async function check(name, opts, fn) {
-  const ctx = await browser.newContext({ locale: 'ru-RU', ...opts });
+  // reduced motion by default: springs land at once, so checks read final values; one check below runs with motion on
+  const ctx = await browser.newContext({ locale: 'ru-RU', reducedMotion: 'reduce', ...opts });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -106,8 +107,8 @@ await check('low resolution warning for a tiny picture on A1', {}, async (page) 
 
 await check('broken file shows a readable error and the app keeps working', {}, async (page) => {
   await page.setInputFiles('#fileInput', { name: 'photo.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('not a picture') });
-  await page.waitForSelector('#toast:not([hidden])');
-  assert.match(await text(page, '#toast'), /не открывается/);
+  await page.waitForSelector('#islShape[data-state=toast]');
+  assert.match(await text(page, '#toastText'), /не открывается/);
   assert.match(await text(page, '#planCap'), /A3/);
 });
 
@@ -151,7 +152,7 @@ await check('start over asks first', {}, async (page) => {
   await page.evaluate(() => { window.kalka.S.done.push(0); });
   await page.click('#startBtn'); await page.keyboard.press('Enter'); await page.keyboard.press('Escape');
   await page.click('#resetDone');
-  await page.click('#confirm button[value=no]');
+  await page.click('#islConfirm button[value=no]');
   assert.match(await text(page, '#progress'), /Обведено/);
   await page.click('#resetDone');
   await page.click('#confirmYes');
@@ -164,7 +165,7 @@ await check('project file round-trip', {}, async (page) => {
   const path = await dl.path();
   await page.click('[data-name=sheet] input[value=A4] + span');
   await page.setInputFiles('#importInput', path);
-  await page.waitForSelector('#toast:has-text("Проект открыт")');
+  await page.waitForFunction(() => document.getElementById('toastText').textContent === 'Проект открыт');
   assert.match(await text(page, '#planCap'), /A2/);
 });
 
@@ -187,6 +188,37 @@ await check('keyboard only: the command palette', {}, async (page) => {
   await page.keyboard.type('english');
   await page.keyboard.press('Enter');
   assert.match(await text(page, 'h1'), /light/);
+});
+
+await check('with motion on: springs and morphs land exactly on their targets', { reducedMotion: 'no-preference', viewport: { width: 1400, height: 900 }, screen: { width: 1470, height: 956 }, deviceScaleFactor: 2 }, async (page) => {
+  const settle = () => page.waitForTimeout(1300);
+  await page.click('[data-name=sheet] input[value=A0] + span');
+  await settle();
+  // the liquid indicator ends exactly under the chosen option
+  const [th, lab] = await page.evaluate(() => {
+    const a = document.querySelector('[data-name=sheet] .thumb').getBoundingClientRect();
+    const b = document.querySelector('[data-name=sheet] input[value=A0]').closest('label').getBoundingClientRect();
+    return [[a.left, a.width], [b.left, b.width]];
+  });
+  assert.ok(Math.abs(th[0] - lab[0]) < 0.5 && Math.abs(th[1] - lab[1]) < 0.5, `thumb ${th} label ${lab}`);
+  // the plan's camera settles on the A0 sheet (landscape 1189 × 841)
+  const vb = (await page.getAttribute('#sheet', 'viewBox')).split(' ').map(Number);
+  assert.ok(Math.abs(vb[2] - (1189 + 118.9 + 35.67)) < 0.1, `viewBox ${vb}`);
+  // the calibration frame springs to the new scale
+  await page.click('[data-adj="0.005"]');
+  await settle();
+  const w = await box(page, '#cardBox');
+  assert.ok(Math.abs(w - 433.4 * 1.005) < 1.5, `card ${w}`);
+  // the island grows into the palette and shrinks back into the pill
+  await page.keyboard.press('ControlOrMeta+k');
+  await settle();
+  assert.equal(await page.getAttribute('#islShape', 'data-state'), 'palette');
+  assert.ok(Math.abs((await box(page, '#islShape')) - 560) < 1);
+  await page.keyboard.press('Escape');
+  await settle();
+  assert.equal(await page.getAttribute('#islShape', 'data-state'), 'idle');
+  // text swaps leave no ghost copies behind
+  assert.equal(await page.evaluate(() => [...document.body.children].filter((e) => e.getAttribute('aria-hidden') === 'true' && e.style.position === 'fixed').length), 0);
 });
 
 await check('phone width: no horizontal scroll', { viewport: { width: 375, height: 800 }, isMobile: true, hasTouch: true }, async (page) => {

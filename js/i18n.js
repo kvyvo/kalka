@@ -2,7 +2,8 @@
 // Dynamic strings are functions or templates with {name} placeholders.
 
 const EN_STATIC = {
-  commands: 'Commands', heroTitle: 'Your screen as a light&nbsp;table',
+  commands: 'Commands', heroTitle: 'Your screen as a light&nbsp;table', eyebrow: 'Free · no sign-up · works offline',
+  heroOpen: 'Open a picture', heroHow: 'Set up the sample', strengthLess: 'fewer', marginName: 'from the edge',
   heroLead: 'Any picture on paper at true size. The screen shows it part by part — lay the sheet on top and trace.',
   s1: 'Picture', fileNone: 'Drop a file here', fileFormats: 'JPG, PNG, SVG, PDF · or paste from clipboard', fileChoose: 'Choose',
   privacy: 'The file stays on your device and is never uploaded.',
@@ -71,6 +72,9 @@ const DYN = {
     cmdMirror: 'Зеркало', cmdRotate: 'Повернуть на 90°', cmdPrint: 'Печать на A4', cmdExport: 'Сохранить проект',
     cmdLang: 'English', cmdTheme: 'Тёмная / светлая тема', cmdNothing: 'Ничего не нашлось', palPh: 'Команда или номер части…',
     ctl: '100 мм',
+    fileChoose: 'Выбрать', fileReplace: 'Заменить', opened: 'Открыто: {name}', customShort: 'Свой лист', doneShort: 'готово',
+    calibSaved: 'Масштаб проверен и сохранён для этого экрана', themeDark: 'Тёмная тема', themeLight: 'Светлая тема',
+    langDone: 'Русский', heroPart: 'экран под листом · часть {n} из {N}',
     hintOutline: 'Контур — для фото: из границ цвета получаются линии. Двигай «Линий», пока не останется главное.',
     hintBw: 'Ч/Б — для рисунков, где линии уже есть: всё тёмное станет чёрным, светлое — белым.',
   },
@@ -115,6 +119,9 @@ const DYN = {
     cmdMirror: 'Mirror', cmdRotate: 'Rotate 90°', cmdPrint: 'Print on A4', cmdExport: 'Save project',
     cmdLang: 'Русский', cmdTheme: 'Dark / light theme', cmdNothing: 'Nothing found', palPh: 'Command or part number…',
     ctl: '100 mm',
+    fileChoose: 'Choose', fileReplace: 'Replace', opened: 'Opened: {name}', customShort: 'Custom', doneShort: 'done',
+    calibSaved: 'Scale checked and saved for this screen', themeDark: 'Dark theme', themeLight: 'Light theme',
+    langDone: 'English', heroPart: 'screen under the sheet · part {n} of {N}',
     hintOutline: 'Outline is for photos: colour edges become lines. Move “Lines” until only what matters is left.',
     hintBw: 'B/W is for drawings that already have lines: dark turns black, light turns white.',
   },
@@ -140,6 +147,18 @@ export const getLang = () => lang;
 export function t(key, vars = {}) {
   const s = DYN[lang][key] ?? DYN.ru[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => (typeof vars[k] === 'number' ? fmt(vars[k]) : vars[k] ?? ''));
+}
+
+const FORMS = {
+  ru: { parts: ['часть', 'части', 'частей'] },
+  en: { parts: ['part', 'parts'] },
+};
+/** Word form for a count: 1 часть, 2 части, 5 частей / 1 part, 2 parts. */
+export function plural(n, key) {
+  const f = FORMS[lang][key];
+  if (lang === 'en') return n === 1 ? f[0] : f[1];
+  const m10 = n % 10, m100 = n % 100;
+  return m10 === 1 && m100 !== 11 ? f[0] : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? f[1] : f[2];
 }
 
 export const fmt = (n, d = 1) => Number(n.toFixed(d)).toLocaleString(lang === 'en' ? 'en-US' : 'ru-RU', { maximumFractionDigits: d });

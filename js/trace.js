@@ -1,24 +1,32 @@
 // The light table: full screen, white, one part at true size, paper edge visible.
+// The HUD is one shape: full controls ↔ a compact pill when idle ↔ the lock pill.
 import { cellSize, cellPos, neighbour, nextTodo } from './geometry.js';
-import { animate, SPRING } from './spring.js';
+import { SPRING } from './spring.js';
+import { Springs, morph, swap, grow, easing, reduced } from './motion.js';
 import { t } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const RED = '#E0102F';
 
 /**
- * `ctx` gives live access to the app: get() → { S, sheet, drawing, k, view, color },
- * save(), onExit().
+ * `ctx` gives live access to the app: get() → { S, sheet, drawing, k, view, color, pixel },
+ * save(), onExit(), cellEl(n) → the part on the plan (for the zoom back).
  */
 export function createTrace(ctx) {
-  const trace = $('trace'), stage = $('stage'), overlay = $('overlay'), img = $('imgView'), hud = $('hud');
-  const mini = $('mini'), lock = $('lock');
-  let pos = null, fits = true, wake = null, wakeTried = false, idleTimer = null, hudHover = false, locked = false;
+  const trace = $('trace'), stage = $('stage'), overlay = $('overlay'), img = $('imgView');
+  const mini = $('mini'), lockEl = $('lock'), unlock = $('unlockBtn'), fill = $('unlockRing');
+  let fits = true, wake = null, wakeTried = false, idleTimer = null, hudHover = false, locked = false;
 
   const g = () => ctx.get();
   const total = () => g().S.grid.cols * g().S.grid.rows;
   const isFull = () => !!document.fullscreenElement;
   const open = () => !trace.hidden;
+
+  const hud = morph($('hudShape'), {
+    full: { layer: $('hudFull'), radius: 26 },
+    compact: { layer: $('hudCompact') },
+    lock: { layer: unlock },
+  }, { dark: '--hud-bg', light: '--hud-bg' });
 
   function enterFull() {
     if (!document.fullscreenEnabled) return;
@@ -35,53 +43,42 @@ export function createTrace(ctx) {
     return Math.abs(r - 1) > 0.01 && Math.abs(r - 1) < 0.6 ? { x: k.x * r, y: k.y * r } : k;
   }
 
+  // the sheet slides under the screen on a spring; positions snap to device pixels
+  const dpr = () => devicePixelRatio || 1;
+  const pos = new Springs({ x: 0, y: 0 }, ({ x, y }) => {
+    stage.style.transform = `translate(${Math.round(x * dpr()) / dpr()}px, ${Math.round(y * dpr()) / dpr()}px)`;
+  });
   function layout(animated) {
-    const { S, sheet, drawing } = g(), k = scale(), dpr = devicePixelRatio || 1;
+    const { S, sheet, drawing } = g(), k = scale();
     const { cols, rows } = S.grid, c = cellSize(drawing, cols, rows), p = cellPos(S.cell, cols);
     const W = trace.clientWidth, H = trace.clientHeight;
-    stage.style.width = sheet.w * k.x + 'px';
-    stage.style.height = sheet.h * k.y + 'px';
-    img.style.left = drawing.x * k.x + 'px';
-    img.style.top = drawing.y * k.y + 'px';
-    img.style.width = drawing.w * k.x + 'px';
-    img.style.height = drawing.h * k.y + 'px';
+    stage.style.width = `${sheet.w * k.x}px`;
+    stage.style.height = `${sheet.h * k.y}px`;
+    Object.assign(img.style, { left: `${drawing.x * k.x}px`, top: `${drawing.y * k.y}px`, width: `${drawing.w * k.x}px`, height: `${drawing.h * k.y}px` });
     overlay.style.width = stage.style.width; overlay.style.height = stage.style.height;
     overlay.setAttribute('viewBox', `0 0 ${sheet.w} ${sheet.h}`);
     overlay.setAttribute('preserveAspectRatio', 'none');
-    $('ctlBar').querySelector('span').style.width = 100 * k.x + 'px';
+    $('ctlBar').querySelector('span').style.width = `${100 * k.x}px`;
     const cx = drawing.x + (p.col + 0.5) * c.w, cy = drawing.y + (p.row + 0.5) * c.h;
-    const tx = Math.round((W / 2 - cx * k.x) * dpr) / dpr, ty = Math.round((H / 2 - cy * k.y) * dpr) / dpr;
     fits = W / k.x >= c.w + 2 && H / k.y >= c.h + 2;
-    const apply = () => { stage.style.transform = `translate(${pos.x.value}px, ${pos.y.value}px)`; };
-    if (!pos || !animated) {
-      pos?.x.stop(); pos?.y.stop();
-      pos = { x: { value: tx, velocity: 0, stop() {} }, y: { value: ty, velocity: 0, stop() {} } };
-      apply();
-      return;
-    }
-    stage.style.willChange = 'transform';
-    pos.x = animate(pos.x, tx, apply, SPRING.smooth);
-    pos.y = animate(pos.y, ty, (v) => { apply(); if (v === ty) stage.style.willChange = ''; }, SPRING.smooth);
+    const target = { x: W / 2 - cx * k.x, y: H / 2 - cy * k.y };
+    animated ? pos.to(target, SPRING.smooth) : pos.set(target);
   }
 
   function renderOverlay() {
     const { S, sheet, drawing } = g(), { cols, rows } = S.grid, c = cellSize(drawing, cols, rows);
     const p = cellPos(S.cell, cols), x0 = drawing.x, y0 = drawing.y;
+    const cx = x0 + p.col * c.w, cy = y0 + p.row * c.h;
     let s = '';
-    if (S.dim) {
-      const cx = x0 + p.col * c.w, cy = y0 + p.row * c.h;
-      s += `<path d="M0 0H${sheet.w}V${sheet.h}H0Z M${cx} ${cy}V${cy + c.h}H${cx + c.w}V${cy}Z" fill="#fff" fill-opacity=".62" fill-rule="evenodd"/>`;
-    }
+    if (S.dim) s += `<path d="M0 0H${sheet.w}V${sheet.h}H0Z M${cx} ${cy}V${cy + c.h}H${cx + c.w}V${cy}Z" fill="#fff" fill-opacity=".62" fill-rule="evenodd"/>`;
     if (S.showGrid) {
-      s += `<g stroke="${RED}" fill="none" vector-effect="non-scaling-stroke">`;
+      s += `<g stroke="${RED}" fill="none">`;
       for (let i = 0; i <= cols; i++) s += `<line x1="${x0 + i * c.w}" y1="${y0}" x2="${x0 + i * c.w}" y2="${y0 + drawing.h}" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
       for (let j = 0; j <= rows; j++) s += `<line x1="${x0}" y1="${y0 + j * c.h}" x2="${x0 + drawing.w}" y2="${y0 + j * c.h}" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
       for (let i = 0; i <= cols; i++) for (let j = 0; j <= rows; j++) {
         const x = x0 + i * c.w, y = y0 + j * c.h;
         s += `<path d="M${x - 8} ${y}H${x + 8}M${x} ${y - 8}V${y + 8}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
       }
-      // current part: bolder frame
-      const cx = x0 + p.col * c.w, cy = y0 + p.row * c.h;
       s += `<rect x="${cx}" y="${cy}" width="${c.w}" height="${c.h}" stroke-width="2" vector-effect="non-scaling-stroke"/></g>`;
     }
     overlay.innerHTML = s;
@@ -92,19 +89,33 @@ export function createTrace(ctx) {
     img.src = S.traceColor ? color : view;
   }
 
+  /* ---------- HUD ---------- */
+  const cur = $('miniCur');
+  const curSp = new Springs({ x: 0, y: 0 }, ({ x, y }) => { cur.style.transform = `translate(${x}px, ${y}px)`; });
   function buildMini() {
     const { cols } = g().S.grid;
     mini.style.gridTemplateColumns = `repeat(${cols}, auto)`;
-    mini.innerHTML = Array.from({ length: total() }, (_, n) => `<button type="button" data-cell="${n}" aria-label="${t('part', { n: n + 1, N: total() })}"></button>`).join('');
+    mini.querySelectorAll('button').forEach((b) => b.remove());
+    mini.insertAdjacentHTML('beforeend', Array.from({ length: total() }, (_, n) => `<button type="button" data-cell="${n}" aria-label="${t('part', { n: n + 1, N: total() })}"></button>`).join(''));
   }
-
+  function placeCur(animated) {
+    const b = mini.querySelector(`button[data-cell="${g().S.cell}"]`);
+    if (!b) return;
+    const v = { x: b.offsetLeft, y: b.offsetTop };
+    animated ? curSp.to(v, { x: SPRING.ui, y: SPRING.ui }) : curSp.set(v);
+  }
+  let lastCell = -1;
   function updateHud() {
     if (!open()) return;
     const { S } = g(), N = total(), { cols } = S.grid, p = cellPos(S.cell, cols);
-    if (mini.children.length !== N) buildMini();
-    [...mini.children].forEach((b, n) => { b.classList.toggle('cur', n === S.cell); b.classList.toggle('done', S.done.includes(n)); });
-    $('hudPart').textContent = t('part', { n: S.cell + 1, N });
-    $('hudPos').textContent = t('pos', { r: p.row + 1, c: p.col + 1 });
+    if (mini.querySelectorAll('button').length !== N) buildMini();
+    mini.querySelectorAll('button').forEach((b, n) => b.classList.toggle('done', S.done.includes(n)));
+    const dir = S.cell >= lastCell ? 1 : -1;
+    swap($('hudPart'), t('part', { n: S.cell + 1, N }), dir);
+    swap($('hudPos'), t('pos', { r: p.row + 1, c: p.col + 1 }), dir);
+    swap($('hudCompactText'), `${S.cell + 1} / ${N}`, dir);
+    lastCell = S.cell;
+    $('hudRing').style.strokeDasharray = `${(S.done.length / N) * 100} 100`;
     $('bDone').setAttribute('aria-pressed', String(S.done.includes(S.cell)));
     $('bMode').setAttribute('aria-pressed', String(S.traceColor));
     $('bMode').hidden = S.view === 'original';
@@ -118,13 +129,20 @@ export function createTrace(ctx) {
     if (wakeTried && wake) parts.push(t('wakeOn'));
     $('hudStatus').innerHTML = parts.join(' ');
     $('hudStatus').hidden = !parts.length;
+    placeCur(true);
+    if (hud.state === 'full') hud.to('full'); // the shape follows its content
   }
 
   function poke() {
     if (!open() || locked) return;
     trace.classList.remove('idle');
+    if (hud.state !== 'full') hud.to('full');
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => { if (!hudHover) trace.classList.add('idle'); }, 2600);
+    idleTimer = setTimeout(() => {
+      if (hudHover || locked) return;
+      trace.classList.add('idle');
+      hud.to('compact');
+    }, 2600);
   }
 
   async function lockWake() {
@@ -161,34 +179,54 @@ export function createTrace(ctx) {
   }
   const toggle = (key, fn) => { g().S[key] = !g().S[key]; ctx.save(); fn(); updateHud(); poke(); };
 
+  /* ---------- lock: the HUD becomes a pill; holding it fills it, then it lets go ---------- */
   function setLock(on) {
     locked = on;
-    lock.hidden = !on;
-    hud.hidden = on;
+    lockEl.hidden = !on;
+    clearTimeout(idleTimer);
     trace.classList.toggle('idle', on);
-    if (on) $('announce').textContent = t('lockOn'); else poke();
+    if (on) { hud.to('lock'); $('announce').textContent = t('lockOn'); } else { hud.to('full'); poke(); }
   }
-  // hold to unlock: 1.2 s on the button, or holding Esc
-  let holdT = null;
-  const ring = $('unlockRing');
-  const holdStart = () => {
-    ring.style.transition = 'width 1.2s linear'; ring.style.width = '100%';
-    holdT = setTimeout(() => { setLock(false); holdEnd(); }, 1200);
+  let holdAnim = null;
+  const holdStart = (e) => {
+    e.preventDefault();
+    if (!locked) return;
+    unlock.classList.add('holding');
+    holdAnim?.cancel();
+    holdAnim = fill.animate([{ width: getComputedStyle(fill).width }, { width: '100%' }], { duration: 1200, easing: 'linear', fill: 'forwards' });
+    holdAnim.onfinish = () => { holdEnd(); setLock(false); };
   };
-  const holdEnd = () => { clearTimeout(holdT); ring.style.transition = 'none'; ring.style.width = '0'; };
-  $('unlockBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); holdStart(); });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => $('unlockBtn').addEventListener(ev, holdEnd));
-  lock.addEventListener('pointerdown', (e) => e.preventDefault());
+  const holdEnd = () => {
+    unlock.classList.remove('holding');
+    if (!holdAnim) return;
+    const w = getComputedStyle(fill).width;
+    holdAnim.cancel();
+    holdAnim = null;
+    const e = easing(SPRING.snappy);
+    fill.animate([{ width: w }, { width: '0px' }], { duration: e.duration, easing: e.easing });
+  };
+  unlock.addEventListener('pointerdown', holdStart);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => unlock.addEventListener(ev, holdEnd));
+  lockEl.addEventListener('pointerdown', (e) => e.preventDefault());
 
-  function enter(n) {
+  /* ---------- in and out: the button or the part grows into the light table ---------- */
+  function enter(n, fromEl) {
     enterFull(); // must stay synchronous inside the click
     if (typeof n === 'number') g().S.cell = n;
     if (g().S.cell >= total()) g().S.cell = 0;
-    document.getElementById('setup').hidden = true;
-    trace.hidden = false;
-    trace.classList.toggle('pixel', g().pixel);
-    applyImage(); buildMini(); renderOverlay(); pos = null; layout(false); updateHud(); poke();
-    ctx.save(); lockWake();
+    const r = fromEl?.getBoundingClientRect();
+    const radius = fromEl ? parseFloat(getComputedStyle(fromEl).borderRadius) || 0 : 0;
+    const fromColor = fromEl ? getComputedStyle(fromEl).backgroundColor : '#fff';
+    const show = () => {
+      document.getElementById('setup').hidden = true;
+      trace.hidden = false;
+      trace.classList.toggle('pixel', !!g().pixel);
+      applyImage(); buildMini(); renderOverlay(); layout(false); lastCell = g().S.cell; updateHud();
+      hud.to('full'); placeCur(false); poke();
+      ctx.save(); lockWake();
+    };
+    if (!r || reduced()) return show();
+    grow(r, { fromColor: fromColor === 'rgba(0, 0, 0, 0)' ? '#fff' : fromColor, fromRadius: radius }).then(show);
   }
   function exit() {
     exitFull();
@@ -198,6 +236,9 @@ export function createTrace(ctx) {
     trace.hidden = true;
     document.getElementById('setup').hidden = false;
     ctx.onExit();
+    const cell = ctx.cellEl(g().S.cell);
+    const r = cell?.getBoundingClientRect();
+    if (r && r.bottom > 0 && r.top < innerHeight) grow(r, { fromColor: '#FFFFFF', toColor: '#FFFFFF', fromRadius: 4, reverse: true });
   }
 
   mini.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { go(Number(b.dataset.cell)); b.blur(); } });
@@ -210,18 +251,19 @@ export function createTrace(ctx) {
   click('bDim', () => toggle('dim', renderOverlay));
   click('bLock', () => setLock(true));
   click('bFull', enterFull);
+  click('hudCompact', poke);
   $('bExit').addEventListener('click', exit);
   trace.addEventListener('pointermove', poke);
   trace.addEventListener('pointerdown', poke);
-  hud.addEventListener('pointerenter', () => { hudHover = true; });
-  hud.addEventListener('pointerleave', () => { hudHover = false; poke(); });
+  $('hud').addEventListener('pointerenter', () => { hudHover = true; });
+  $('hud').addEventListener('pointerleave', () => { hudHover = false; poke(); });
   // pinch-zoom would break the true scale
   trace.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
   trace.addEventListener('gesturestart', (e) => e.preventDefault());
 
   let escDown = 0;
   document.addEventListener('keydown', (e) => {
-    if (!open() || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('dialog[open]')) return;
+    if (!open() || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('dialog:modal')) return;
     if (locked) {
       e.preventDefault();
       if (e.code === 'Escape' && !e.repeat) escDown = performance.now();
@@ -240,7 +282,7 @@ export function createTrace(ctx) {
       case 'KeyG': toggle('showGrid', renderOverlay); break;
       case 'KeyD': toggle('dim', renderOverlay); break;
       case 'KeyL': setLock(true); break;
-      case 'KeyH': hud.hidden = !hud.hidden; poke(); break;
+      case 'KeyH': $('hud').hidden = !$('hud').hidden; poke(); break;
       case 'KeyF': isFull() ? exitFull() : enterFull(); break;
       case 'Escape': if (!isFull()) exit(); break;
       default:

@@ -3,7 +3,7 @@ const VERSION = 'dev';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'manifest.webmanifest', 'assets/icon.svg', 'assets/demo.svg',
   'js/app.js', 'js/geometry.js', 'js/screens.js', 'js/spring.js', 'js/store.js', 'js/i18n.js',
-  'js/image.js', 'js/outline.js', 'js/outline.worker.js', 'js/trace.js', 'js/ui.js',
+  'js/image.js', 'js/outline.js', 'js/outline.worker.js', 'js/trace.js', 'js/ui.js', 'js/motion.js', 'js/island.js', 'js/hero.js',
 ];
 
 self.addEventListener('install', (e) => {

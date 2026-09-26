@@ -1,5 +1,5 @@
 // Closed-form damped spring (mass 1). Pure function of time, so it is frame-rate
-// independent and can be sampled anywhere — the promo video relies on that.
+// independent and an interrupted spring can start from any value and velocity.
 
 /** SwiftUI-style parameters → stiffness/damping. */
 export const fromApple = (duration = 0.5, bounce = 0) => ({

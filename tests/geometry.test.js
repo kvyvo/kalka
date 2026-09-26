@@ -65,3 +65,11 @@ test('printTiles covers the drawing with overlapping A4 windows', () => {
   assert.ok(last.x + win.w >= d.w);
   assert.equal(printTiles({ w: 190, h: 267 }, win, 10).tiles.length, 1);
 });
+
+import { plural } from '../js/i18n.js';
+
+test('Russian plural forms', () => {
+  const f = (n) => plural(n, 'parts');
+  assert.deepEqual([1, 2, 4, 5, 11, 12, 14, 21, 22, 25, 101, 111].map(f),
+    ['часть', 'части', 'части', 'частей', 'частей', 'частей', 'частей', 'часть', 'части', 'частей', 'часть', 'частей']);
+});
