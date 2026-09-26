@@ -32,7 +32,7 @@
   .layer { position: absolute; left: 50%; top: 0; }
   #cursor { position: absolute; left: 0; top: 0; width: 26px; height: 32px; transform-origin: 0 0; z-index: 90; }
   #screen { position: absolute; inset: 0; pointer-events: none; }
-  #table { position: absolute; background: #fff; overflow: hidden; }
+  #table { position: absolute; background: #fff; overflow: hidden; box-shadow: 0 0 0 1px rgb(17 17 16 / .08), 0 30px 80px -24px rgb(0 0 0 / .35); }
 </style>
 </head>
 <body>
@@ -40,28 +40,6 @@
   <div id="world">
     <div class="abs" style="left:48px;top:30px;display:flex;align-items:center;gap:9px;font-weight:600;font-size:16px"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><rect x="2" y="2" width="12" height="12" rx="3.5"/><path d="M6 2v12M10 2v12M2 8h12"/></svg>Kalka</div>
 
-    <div class="island" id="isl" style="z-index:50">
-      <div class="layer" id="islIdle" style="display:flex;align-items:center;gap:10px;height:44px;padding:0 10px 0 16px;color:#fff;font-size:14px;font-weight:500;white-space:nowrap">
-        <svg width="16" height="16" viewBox="0 0 16 16" class="ic"><rect x="2" y="2" width="12" height="12" rx="3.5"/><path d="M6 2v12M10 2v12M2 8h12"/></svg>
-        <span style="position:relative;display:inline-block;width:104px;height:20px"><span class="sw" id="sumA" style="left:0;top:0">Kalka</span><span class="sw" id="sumB" style="left:0;top:0">A3 · 6 частей</span></span>
-        <svg width="18" height="18" viewBox="0 0 20 20" style="rotate:-90deg"><circle cx="10" cy="10" r="7.5" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="2.4"/><circle id="ring" cx="10" cy="10" r="7.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
-        <span class="mono" style="font-size:11px;padding:4px 6px;border-radius:6px;background:rgb(255 255 255/.12);color:rgb(255 255 255/.7)">⌘K</span>
-      </div>
-      <div class="layer" id="islPal" style="width:600px;color:var(--ink)">
-        <div style="display:flex;align-items:center;gap:12px;height:60px;padding:0 18px 0 22px;border-bottom:1px solid var(--line);color:var(--ink-2)">
-          <svg width="16" height="16" viewBox="0 0 16 16" class="ic"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
-          <span style="flex:1;font-size:17px;color:var(--ink)"><span id="palText"></span><span id="caret" style="display:inline-block;width:2px;height:20px;background:var(--accent);vertical-align:-4px;margin-left:1px"></span><span id="palPh" style="color:var(--ink-3);position:absolute;margin-left:-3px">Команда или часть…</span></span>
-          <span class="mono" style="font-size:11px;padding:4px 6px;border-radius:6px;background:var(--fill-2)">esc</span>
-        </div>
-        <div style="position:relative;padding:6px" id="palList"></div>
-      </div>
-      <div class="layer" id="islToast" style="display:flex;align-items:center;gap:10px;height:48px;padding:0 20px 0 10px;color:#fff;font-size:14.5px;font-weight:500;white-space:nowrap">
-        <span style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:grid;place-items:center"><svg width="14" height="14" viewBox="0 0 16 16" class="ic" style="stroke:#fff;stroke-width:2"><path d="M3.5 8.5l3 3 6-7"/></svg></span>
-        6 листов A4 готовы к печати
-      </div>
-    </div>
-
-    <div class="abs" id="dim" style="left:-2000px;top:-2000px;width:5440px;height:5440px;background:rgb(14 14 13/.22);z-index:40"></div>
     <div class="card" style="left:60px;top:120px;width:640px;height:370px">
       <div class="head"><span class="num">1</span>Картинка</div>
       <div class="abs" style="left:22px;top:74px;width:596px;height:76px;border-radius:22px;background:var(--surface-2)">
@@ -146,27 +124,49 @@
   </div>
 
   <div id="screen">
+    <div class="abs" id="dim" style="inset:0;background:rgb(14 14 13/.22)"></div>
+    <div class="island" id="isl" style="transform-origin:50% 0">
+      <div class="layer" id="islIdle" style="display:flex;align-items:center;gap:10px;height:44px;padding:0 10px 0 16px;color:#fff;font-size:14px;font-weight:500;white-space:nowrap">
+        <svg width="16" height="16" viewBox="0 0 16 16" class="ic"><rect x="2" y="2" width="12" height="12" rx="3.5"/><path d="M6 2v12M10 2v12M2 8h12"/></svg>
+        <span style="position:relative;display:inline-block;width:104px;height:20px"><span class="sw" id="sumA" style="left:0;top:0">Kalka</span><span class="sw" id="sumB" style="left:0;top:0">A3 · 6 частей</span></span>
+        <svg width="18" height="18" viewBox="0 0 20 20" style="rotate:-90deg"><circle cx="10" cy="10" r="7.5" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="2.4"/><circle id="ring" cx="10" cy="10" r="7.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <span class="mono" style="font-size:11px;padding:4px 6px;border-radius:6px;background:rgb(255 255 255/.12);color:rgb(255 255 255/.7)">⌘K</span>
+      </div>
+      <div class="layer" id="islPal" style="width:600px;color:var(--ink)">
+        <div style="display:flex;align-items:center;gap:12px;height:60px;padding:0 18px 0 22px;border-bottom:1px solid var(--line);color:var(--ink-2)">
+          <svg width="16" height="16" viewBox="0 0 16 16" class="ic"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
+          <span style="flex:1;font-size:17px;color:var(--ink)"><span id="palText"></span><span id="caret" style="display:inline-block;width:2px;height:20px;background:var(--accent);vertical-align:-4px;margin-left:1px"></span><span id="palPh" style="color:var(--ink-3);position:absolute;margin-left:-3px">Команда или часть…</span></span>
+          <span class="mono" style="font-size:11px;padding:4px 6px;border-radius:6px;background:var(--fill-2)">esc</span>
+        </div>
+        <div style="position:relative;padding:6px" id="palList"></div>
+      </div>
+      <div class="layer" id="islToast" style="display:flex;align-items:center;gap:10px;height:48px;padding:0 20px 0 10px;color:#fff;font-size:14.5px;font-weight:500;white-space:nowrap">
+        <span style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:grid;place-items:center"><svg width="14" height="14" viewBox="0 0 16 16" class="ic" style="stroke:#fff;stroke-width:2"><path d="M3.5 8.5l3 3 6-7"/></svg></span>
+        6 листов A4 готовы к печати
+      </div>
+    </div>
+
     <div id="table">
       <div class="abs" id="tableArt" style="left:0;top:0;width:1440px;height:100%">
         <div class="abs" id="paper" style="background:#fff;outline:4000px solid #D9D8D3"></div>
         <svg viewBox="0 0 380 269" class="abs" id="tableSvg"><use href="#branch"/></svg>
         <div class="abs" id="frameRed" style="border:3px solid var(--accent);border-radius:4px;box-shadow:0 0 0 3000px rgb(255 255 255 / .55)"></div>
       </div>
-      <div class="abs mono" style="left:40px;top:34px;font-size:15px;color:var(--ink-2)"><div style="width:200px;height:10px;border:2px solid var(--ink);border-top:0;margin-bottom:6px"></div>100 мм</div>
+      <div class="abs mono" id="ruler" style="left:40px;top:34px;font-size:15px;color:var(--ink-2)"><div style="width:200px;height:10px;border:2px solid var(--ink);border-top:0;margin-bottom:6px"></div>100 мм</div>
       <div class="abs" id="hud" style="background:#fff;overflow:hidden;box-shadow:0 0 0 1px rgb(17 17 16/.08),0 16px 40px -16px rgb(0 0 0/.3)">
         <div class="layer" id="hudFull" style="top:auto;bottom:0;display:flex;align-items:center;gap:12px;height:72px;padding:0 12px;font-size:17px;white-space:nowrap">
           <div style="position:relative;width:78px;height:36px" id="mini"></div>
           <div style="position:relative;width:150px;height:44px"><b class="sw" id="hpA" style="top:0;font-size:19px;font-weight:600">Часть 6 из 12</b><b class="sw" id="hpB" style="top:0;font-size:19px;font-weight:600">Часть 7 из 12</b><span class="sw" style="top:24px;font-size:14px;color:var(--ink-2)">ряд 2</span></div>
           <span style="width:46px;height:46px;border-radius:999px;background:rgb(17 17 16/.05);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></span>
-          <span style="width:46px;height:46px;border-radius:999px;background:rgb(17 17 16/.05);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><path d="M6 3.5 10.5 8 6 12.5"/></svg></span>
+          <span id="hudNext" style="width:46px;height:46px;border-radius:999px;background:rgb(17 17 16/.05);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><path d="M6 3.5 10.5 8 6 12.5"/></svg></span>
           <span id="doneBtn" style="height:46px;padding:0 18px;border-radius:999px;display:flex;align-items:center;gap:8px;font-weight:500"><svg width="20" height="20" viewBox="0 0 16 16" class="ic" id="doneIc" style="stroke-width:2"><path id="doneCheck" d="M3.5 8.5l3 3 6-7" pathLength="1" stroke-dasharray="1"/></svg>Готово</span>
           <span style="width:1px;height:26px;background:rgb(17 17 16/.1)"></span>
           <span id="lockBtn" style="width:46px;height:46px;border-radius:999px;background:rgb(17 17 16/.05);display:grid;place-items:center;position:relative;overflow:hidden"><i id="lockFill" style="position:absolute;left:0;top:0;bottom:0;background:#111110"></i><svg width="20" height="20" viewBox="0 0 16 16" class="ic" style="position:relative" id="lockIc"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg></span>
           <span style="height:46px;padding:0 16px;border-radius:999px;background:rgb(17 17 16/.05);display:flex;align-items:center;font-weight:500">Выход</span>
         </div>
-        <div class="layer" id="hudLock" style="top:auto;bottom:0;display:flex;align-items:center;gap:10px;height:56px;padding:0 24px;font-size:16px;font-weight:500;white-space:nowrap;overflow:hidden">
-          <i id="unlockFill" style="position:absolute;left:0;top:0;bottom:0;background:#111110"></i>
-          <svg width="20" height="20" viewBox="0 0 16 16" class="ic" style="position:relative" id="unIc"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg><span style="position:relative" id="unText">Зажми, чтобы снять замок</span>
+        <div class="layer" id="hudLock" style="top:auto;bottom:0;height:56px;font-size:16px;font-weight:500;white-space:nowrap">
+          <span style="display:flex;align-items:center;gap:10px;height:56px;padding:0 24px;color:#111110"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg>Зажми, чтобы снять замок</span>
+          <span id="unlockFill" style="position:absolute;inset:0;display:flex;align-items:center;gap:10px;padding:0 24px;background:#111110;color:#fff;clip-path:inset(0 100% 0 0)"><svg width="20" height="20" viewBox="0 0 16 16" class="ic"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg>Зажми, чтобы снять замок</span>
         </div>
       </div>
     </div>
@@ -177,13 +177,15 @@
   <defs>
     <symbol id="branch" viewBox="0 0 380 269">
       <path d="M22 238C80 232 150 205 205 160S300 70 355 38" fill="none" stroke="#3A2E26" stroke-width="5" stroke-linecap="round"/>
+      <path d="M200 164C246 150 300 150 372 136" fill="none" stroke="#3A2E26" stroke-width="3.5" stroke-linecap="round"/>
       <g fill="#8DB896" fill-opacity=".8" stroke="#2F4A36" stroke-width="2" stroke-linejoin="round">
         <path d="M70 226q10-40 44-50q-4 38-44 50z"/><path d="M96 222q30 20 64 8q-30-24-64-8z"/>
         <path d="M150 196q2-44 34-60q2 40-34 60z"/><path d="M176 180q36 12 64-8q-34-20-64 8z"/>
         <path d="M230 138q0-42 28-60q6 38-28 60z"/><path d="M252 120q36 8 60-16q-36-14-60 16z"/>
         <path d="M300 78q-4-36 22-54q8 32-22 54z"/><path d="M318 62q30 2 46-22q-30-6-46 22z"/>
+        <path d="M232 152q10-34 40-42q-6 34-40 42z"/><path d="M246 156q30 18 58 6q-26-24-58-6z"/><path d="M292 146q8-32 36-40q-4 32-36 40z"/><path d="M314 146q26 16 52 2q-24-20-52-2z"/>
       </g>
-      <g fill="#D9452F" stroke="#6E1A10" stroke-width="1.5"><circle cx="132" cy="210" r="7"/><circle cx="144" cy="216" r="7"/><circle cx="268" cy="104" r="7"/><circle cx="280" cy="96" r="7"/></g>
+      <g fill="#D9452F" stroke="#6E1A10" stroke-width="1.5"><circle cx="340" cy="150" r="7"/><circle cx="352" cy="144" r="7"/><circle cx="132" cy="210" r="7"/><circle cx="144" cy="216" r="7"/><circle cx="268" cy="104" r="7"/><circle cx="280" cy="96" r="7"/></g>
     </symbol>
     <filter id="outline"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="1.8" intercept="-.3"/><feFuncG type="linear" slope="1.8" intercept="-.3"/><feFuncB type="linear" slope="1.8" intercept="-.3"/></feComponentTransfer></filter>
   </defs>
@@ -212,15 +214,15 @@ const onoff = (wins, s = S.smooth) => track(0, wins.flatMap(([a, z]) => [[a, 1, 
 
 const P = {
   fileBtn: [598, 213], viewContour: [336, 318], slider: [520, 382], sheetA1: [396, 616], swKnob: [174, 686],
-  grip: [0, 0], okBtn: [578, 1003], island: [720, 58],
+  grip: [0, 0], okBtn: [578, 1003],
 };
 const SHOT = {
-  file: [400, 214, 2.05], island: [720, 60, 2.6], view: [372, 330, 2.0], sheet: [340, 622, 2.1], plan: [1060, 420, 1.62],
-  sw: [300, 690, 2.4], screen: [380, 1000, 1.75], pal: [720, 250, 1.75],
+  file: [380, 290, 2.0], view: [380, 330, 2.0], sheet: [360, 640, 2.1], plan: [1060, 430, 1.6],
+  sw: [320, 690, 2.3], screen: [380, 1000, 1.75], print: [1060, 1010, 2.0],
 };
 const cam = (() => {
-  const shots = [[b(0), 'file'], [b(3) - 0.25, 'island'], [b(4) - 0.3, 'view'], [b(8) - 0.3, 'sheet'], [b(9) - 0.2, 'plan'], [b(11) - 0.3, 'sw'],
-    [b(12) - 0.3, 'screen'], [b(15) - 0.3, 'plan'], [b(24) - 0.35, 'pal'], [b(27) - 0.3, 'file']];
+  const shots = [[b(0), 'file'], [b(4) - 0.35, 'view'], [b(8) - 0.3, 'sheet'], [b(9) - 0.2, 'plan'], [b(11) - 0.3, 'sw'],
+    [b(12) - 0.3, 'screen'], [b(15) - 0.3, 'plan'], [b(24) - 0.3, 'print'], [b(27) - 0.35, 'file']];
   const mk = (i) => track(SHOT.file[i], shots.slice(1).map(([t, n]) => [t, SHOT[n][i], S.cam]));
   const x = mk(0), y = mk(1), zl = track(Math.log(SHOT.file[2]), shots.slice(1).map(([t, n]) => [t, Math.log(SHOT[n][2]), S.cam]));
   return (t) => ({ x: x(t), y: y(t), z: Math.exp(zl(t)) * ZK });
@@ -232,35 +234,43 @@ const sheetBox = { x: 780, y: 190, w: 560, h: 396 };
 const partRect = (cols, rows, i) => { const cw = 560 / cols, ch = 396 / rows; return { x: sheetBox.x + (i % cols) * cw, y: sheetBox.y + Math.floor(i / cols) * ch, w: cw, h: ch }; };
 const TARGET_PART = 5;
 const tp = partRect(4, 3, TARGET_PART);
-const HY = FH - 107, HUD = { next: [790, HY], done: [900, HY], lock: [1082, HY], pill: [720, HY + 7] };
+const HUDS = 1.5, HUDY = FH - 130, ISC = 1.55;
+let HUD = { next: [800, HUDY], done: [930, HUDY], lock: [1140, HUDY], pill: [720, HUDY] };
 const tableCam = SHOT.plan;
 const tcam = { x: tableCam[0], y: tableCam[1], z: tableCam[2] * ZK };
 const W = (sx, sy) => toWorld(tcam, sx, sy);
 
-const CUR = [
-  [b(0), P.fileBtn], [b(1) - 0.05, [596, 214]],
-  [b(3) - 0.3, [770, 70]],
-  [b(4) - 0.35, P.viewContour],
-  [b(5) + 0.1, [60 + 144 + 460 * 0.6, 382]],
-  [b(8) - 0.35, P.sheetA1],
-  [b(9) - 0.1, [1150, 300]],
-  [b(11) - 0.35, P.swKnob],
-  [b(12) - 0.35, [506, 1034]],
-  [b(14) - 0.35, P.okBtn],
-  [b(15) - 0.3, [tp.x + tp.w * 0.5, tp.y + tp.h * 0.55]],
-  [b(17) - 0.3, W(...HUD.next)], [b(18) - 0.3, W(...HUD.done)], [b(19) - 0.3, W(...HUD.next)],
-  [b(20) - 0.3, W(...HUD.lock)], [b(21) + 0.2, W(...HUD.pill)],
-  [b(23) + 0.2, W(760, 1100)],
-  [b(24) - 0.2, [860, 120]],
-  [b(27) - 0.25, P.fileBtn],
-];
+function curList() {
+  return [
+    [b(0), P.fileBtn], [b(1) - 0.05, [596, 214]],
+    [b(3) - 0.3, [520, 262]],
+    [b(4) - 0.35, P.viewContour],
+    [b(5) + 0.1, [60 + 144 + 460 * 0.6, 382]],
+    [b(8) - 0.35, P.sheetA1],
+    [b(9) - 0.1, [1150, 300]],
+    [b(11) - 0.35, P.swKnob],
+    [b(12) - 0.35, [506, 1034]],
+    [b(14) - 0.35, P.okBtn],
+    [b(15) - 0.3, [tp.x + tp.w * 0.5, tp.y + tp.h * 0.55]],
+    [b(17) - 0.3, W(...HUD.next)], [b(18) - 0.3, W(...HUD.done)], [b(19) - 0.3, W(...HUD.next)],
+    [b(20) - 0.3, W(...HUD.lock)], [b(21) + 0.2, W(...HUD.pill)],
+    [b(23) + 0.2, W(760, 1100)],
+    [b(24) - 0.1, [1000, 1030]],
+    [b(27) - 0.25, P.fileBtn],
+  ];
+}
 const SL = { x0: 144 + 60, w: 460, v0: 0.6 };
 const slX = (v) => SL.x0 + SL.w * v;
 const DRAG1 = [b(5) + 0.35, b(7)];
 const GRIP0 = 26 + 60 + 324;
 const DRAG2 = [b(12) + 0.05, b(13)];
-const cx0 = track(P.fileBtn[0], CUR.slice(1).map(([ti, p]) => [ti, p[0], S.cur]), S.cur);
-const cy0 = track(P.fileBtn[1], CUR.slice(1).map(([ti, p]) => [ti, p[1], S.cur]), S.cur);
+let cx0, cy0;
+function buildCursor() {
+  const CUR = curList();
+  cx0 = track(P.fileBtn[0], CUR.slice(1).map(([ti, p]) => [ti, p[0], S.cur]), S.cur);
+  cy0 = track(P.fileBtn[1], CUR.slice(1).map(([ti, p]) => [ti, p[1], S.cur]), S.cur);
+}
+buildCursor();
 const ease = (k) => k * k * (3 - 2 * k);
 function dragX(t, win, x0, x1) { const k = clamp((t - win[0]) / (win[1] - win[0] - 0.1)); return mix(x0, x1, ease(k)); }
 function cursorAt(t) {
@@ -286,8 +296,8 @@ const segR = track(97, [[b(4), 191, spring(0.32, 0.12)], [b(24) + 0.3, 97, S.smo
 const outlineK = track(0, [[b(5), 1, S.smooth], [b(24) + 0.3, 0, S.smooth]]);
 function sliderV(t) {
   const [a, z] = DRAG1;
-  if (t >= a && t < z) { const x = cursorAt(t)[0]; const v = (x - SL.x0) / SL.w; return v > 1 ? 1 + (v - 1) * 0.55 / (1 + (v - 1) * 1.1) : v; }
-  if (t >= z) { const x = slX(1) + 150, over = (x - SL.x0) / SL.w - 1, vz = 1 + over * 0.55 / (1 + over * 1.1); const back = mix(vz, 1, S.snappy(t - z)); return t < b(24) + 0.3 ? back : mix(1, 0.6, S.smooth(t - b(24) - 0.3)); }
+  if (t >= a && t < z) { const x = cursorAt(t)[0]; const v = (x - SL.x0) / SL.w; return v > 1 ? 1 + (v - 1) * 0.3 / (1 + (v - 1) * 4) : v; }
+  if (t >= z) { const x = slX(1) + 150, over = (x - SL.x0) / SL.w - 1, vz = 1 + over * 0.3 / (1 + over * 4); const back = mix(vz, 1, S.snappy(t - z)); return t < b(24) + 0.3 ? back : mix(1, 0.6, S.smooth(t - b(24) - 0.3)); }
   return 0.6;
 }
 const shL = track(59, [[b(8), 171, spring(0.55, 0.1)], [b(24) + 0.3, 59, S.smooth]]);
@@ -320,6 +330,7 @@ const doneCk = track(0, [[b(18), 1, S.smooth], [b(19), 0, S.snap]]);
 const lockFill = track(0, [[b(20), 1, (t) => clamp(t / 0.9)], [b(21), 0, S.snap]]);
 const hudLock = track(0, [[b(21), 1, S.snappy], [b(22) + 0.55, 0, S.snappy]]);
 const unFill = track(0, [[b(22) - 0.05, 1, (t) => clamp(t / 0.55)], [b(22) + 0.55, 0, S.snap]]);
+const islVis = track(1, [[b(1), 0, S.smooth], [b(2.6), 1, S.snappy], [b(4.2), 0, S.smooth], [b(23.7), 1, S.snappy]]);
 const islPal = onoff([[b(24), b(26)]], S.snappy);
 const islToast = onoff([[b(26), b(27)]], S.snappy);
 const TYPE = 'печ', typeAt = [b(25) - 0.05, b(25) + 0.1, b(25) + 0.25];
@@ -363,9 +374,9 @@ function seek(t) {
   const ih = mix(mix(44, ihList, kp), 48, kt);
   const ir = mix(mix(22, 24, kp), 24, kt);
   const isl = $('isl'); isl.style.width = iw + 'px'; isl.style.height = ih + 'px'; isl.style.borderRadius = ir + 'px';
-  isl.style.left = 720 - iw / 2 + 'px'; isl.style.top = '32px';
+  isl.style.left = CX - iw / 2 + 'px'; isl.style.top = '22px'; isl.style.transform = `scale(${ISC})`; const iv = islVis(t); isl.style.translate = `0 ${-(1 - iv) * 160}px`; isl.style.opacity = clamp(iv * 1.5);
   const dimK = clamp(kp - kt); $('dim').style.opacity = dimK; $('dim').style.display = dimK > 0.01 ? 'block' : 'none';
-  const light = clamp(kp - kt); const col = Math.round(255 * light);
+  const light = ease(clamp((kp - kt - 0.1) / 0.45)); const col = Math.round(255 * light);
   isl.style.background = `rgb(${col},${col},${col})`;
   layer($('islIdle'), 1 - Math.max(kp, kt) * 1.4); $('islIdle').style.translate = '-50% 0';
   layer($('islPal'), (kp - kt) * 1.4 - 0.2); $('islPal').style.translate = '-50% 0';
@@ -423,7 +434,7 @@ function seek(t) {
   hi.setAttribute('x', tp.x - sheetBox.x); hi.setAttribute('y', tp.y - sheetBox.y); hi.setAttribute('width', tp.w); hi.setAttribute('height', tp.h); hi.style.opacity = tk;
 
   const [x, y] = cursorAt(t), pr = clamp(press(t));
-  const cz = c.z; $('cursor').style.transform = `translate(${x - 4 / cz}px, ${y - 3 / cz}px) scale(${(1 / cz) * mix(1, 0.86, pr)})`;
+  const cz = c.z; $('cursor').style.transform = `translate(${x - 4 / cz}px, ${y - 3 / cz}px) scale(${(1.35 / cz) * mix(1, 0.86, pr)})`;
   $('cursor').style.opacity = 1;
 
   const g = grow(t), tb = $('table');
@@ -444,10 +455,10 @@ function seek(t) {
     paper.style.left = px + 'px'; paper.style.top = py + 'px'; paper.style.width = 560 * scale + 'px'; paper.style.height = 396 * scale + 'px';
     svg.style.left = px + 560 * 0.04 * scale + 'px'; svg.style.top = py + 396 * 0.04 * scale + 'px'; svg.style.width = 560 * 0.92 * scale + 'px'; svg.style.height = 396 * 0.92 * scale + 'px';
     fr.style.left = ox + 'px'; fr.style.top = oy + 'px'; fr.style.width = (560 / 4) * scale + 'px'; fr.style.height = (396 / 3) * scale + 'px';
-    $('tableArt').style.opacity = inner;
+    $('tableArt').style.opacity = inner; $('ruler').style.opacity = inner;
     const kl2 = clamp(hudLock(t)); const hud = $('hud');
     const hw = mix(1000, 330, kl2), hh = mix(72, 56, kl2);
-    hud.style.width = hw + 'px'; hud.style.height = hh + 'px'; hud.style.left = 720 - hw / 2 + 'px'; hud.style.top = FH - 140 - hh / 2 + 'px'; hud.style.borderRadius = hh / 2 + 'px';
+    hud.style.width = hw + 'px'; hud.style.height = hh + 'px'; hud.style.left = 720 - hw / 2 + 'px'; hud.style.top = HUDY - hh / 2 + 'px'; hud.style.transform = `scale(${HUDS})`; hud.style.transformOrigin = '50% 50%'; hud.style.borderRadius = hh / 2 + 'px';
     hud.style.opacity = inner; hud.style.translate = `0 ${(1 - inner) * 30}px`;
     layer($('hudFull'), 1 - kl2 * 1.5); $('hudFull').style.translate = '-50% 0';
     layer($('hudLock'), kl2 * 1.5 - 0.3); $('hudLock').style.translate = '-50% 0';
@@ -456,13 +467,24 @@ function seek(t) {
     const dk = clamp(doneK(t)); $('doneBtn').style.background = dk > 0.5 ? '#111110' : 'rgb(17 17 16/.05)'; $('doneBtn').style.color = dk > 0.5 ? '#fff' : '#111110';
     $('doneIc').style.display = dk > 0.02 ? 'block' : 'none'; $('doneCheck').setAttribute('stroke-dashoffset', 1 - clamp(doneCk(t)));
     $('lockFill').style.width = clamp(lockFill(t)) * 100 + '%'; $('lockIc').style.color = lockFill(t) > 0.55 ? '#fff' : '#111110';
-    $('unlockFill').style.width = clamp(unFill(t)) * 100 + '%'; const uf = unFill(t) > 0.45; $('unText').style.color = uf ? '#fff' : '#111110'; $('unIc').style.color = uf ? '#fff' : '#111110';
+    $('unlockFill').style.clipPath = `inset(0 ${(1 - clamp(unFill(t))) * 100}% 0 0)`;
   }
   const onTable = g > 0.6;
   if (onTable && $('cursor').parentElement !== $('screen')) $('screen').append($('cursor'));
   if (!onTable && $('cursor').parentElement !== $('world')) $('world').append($('cursor'));
-  if (onTable) { const [sx, sy] = toScreen(c, x, y); $('cursor').style.transform = `translate(${sx - 4}px, ${sy - 3}px) scale(${mix(1, 0.86, pr)})`; }
+  if (onTable) { const [sx, sy] = toScreen(c, x, y); $('cursor').style.transform = `translate(${sx - 5}px, ${sy - 4}px) scale(${1.35 * mix(1, 0.86, pr)})`; }
 }
+function measureHud() {
+  const at = (id) => { const r = $(id).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  seek(b(18) + 0.3);
+  const next = at('hudNext'), done = at('doneBtn'), lock = at('lockBtn');
+  seek(b(21) + 0.6);
+  const pill = at('hudLock');
+  HUD = { next, done, lock, pill };
+  buildCursor();
+  seek(0);
+}
+document.fonts.ready.then(measureHud);
 window.seek = seek;
 window.T = T;
 seek(0);

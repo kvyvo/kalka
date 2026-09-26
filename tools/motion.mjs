@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const FPS = Number(process.env.FPS || 50), SUB = 4, SIZE = Number(process.env.SIZE || 720), H = Number(process.env.H || 1440);
+const SHUTTER = 0.35, FPS = Number(process.env.FPS || 50), SUB = 6, SIZE = Number(process.env.SIZE || 720), H = Number(process.env.H || 1440);
 const scene = new URL(`./motion.html?h=${H}`, import.meta.url).href;
 const out = fileURLToPath(new URL('../docs/motion.gif', import.meta.url));
 
@@ -23,11 +23,11 @@ const T = await p.evaluate(() => window.T);
 const master = fileURLToPath(new URL(`../docs/.motion-master-${H}.mkv`, import.meta.url));
 const outH = Math.round(SIZE * H / 1440 / 2) * 2;
 const ff = spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS * SUB), '-i', '-',
-  '-vf', `tmix=frames=${SUB},framestep=${SUB},scale=${SIZE}:${outH}:flags=lanczos`, '-r', String(FPS), '-c:v', 'ffv1', master], { stdio: ['pipe', 'inherit', 'inherit'] });
+  '-vf', `tmix=frames=${SUB},select='eq(mod(n\\,${SUB})\\,${SUB - 1})',setpts=N/(${FPS}*TB),scale=${SIZE}:${outH}:flags=lanczos`, '-r', String(FPS), '-c:v', 'ffv1', master], { stdio: ['pipe', 'inherit', 'inherit'] });
 
 const N = Math.round(T * FPS * SUB);
 for (let i = 0; i < N; i++) {
-  await p.evaluate((t) => seek(t), i / (FPS * SUB));
+  await p.evaluate((t) => seek(t), (Math.floor(i / SUB) + (i % SUB) / SUB * SHUTTER) / FPS);
   const png = await p.screenshot({ type: 'png' });
   if (!ff.stdin.write(png)) await new Promise((r) => ff.stdin.once('drain', r));
   if (i % 200 === 0) process.stdout.write(`\r${Math.round((i / N) * 100)} %`);
