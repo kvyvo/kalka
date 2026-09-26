@@ -18,7 +18,13 @@ const BUILD = 'dev';
 if (document.querySelector('meta[name=build]')?.content !== BUILD) {
   let again = true;
   try { again = sessionStorage.getItem('kalka-reload') !== BUILD; sessionStorage.setItem('kalka-reload', BUILD); } catch { /* no storage */ }
-  if (again) location.reload();
+  // an old service worker may be the one serving the old page: let the new one take over first
+  const sw = 'serviceWorker' in navigator && location.protocol === 'https:' ? navigator.serviceWorker : null;
+  const takeover = sw ? Promise.race([
+    sw.register('sw.js').then((r) => r.update()).then(() => new Promise((r) => sw.addEventListener('controllerchange', r, { once: true }))),
+    new Promise((r) => setTimeout(r, 2000)),
+  ]).catch(() => {}) : Promise.resolve();
+  if (again) takeover.then(() => location.reload());
   throw new Error(`stale page for build ${BUILD}`);
 }
 // Safari may run modules before the stylesheet is applied; everything below measures layout
