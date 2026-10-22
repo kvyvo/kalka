@@ -193,21 +193,28 @@ function renderSheetCtl() {
   seg.sheet.set(S.sheet); seg.land.set(S.land ? '1' : '0'); seg.sizeMode.set(S.sizeMode); seg.view.set(S.view);
 }
 
+// Card frame keeps true size; if it doesn't fit the column lying down, stand it up (54 mm wide).
 const kSp = new Springs({ x: 0, y: 0 }, ({ x, y }) => {
-  const box = $('cardBox');
-  box.style.width = `${CARD.w * x}px`;
-  box.style.height = `${CARD.h * y}px`;
+  const box = $('cardBox'), zone = box.parentElement;
+  const room = zone.clientWidth - 16, tx = kSp.target('x');
+  const tall = CARD.w * tx > room && CARD.h * tx <= room;
+  const [w, h] = tall ? [CARD.h, CARD.w] : [CARD.w, CARD.h];
+  box.classList.toggle('tall', tall);
+  box.style.width = `${w * x}px`;
+  box.style.height = `${h * y}px`;
   box.style.borderRadius = `${CARD.r * x}px / ${CARD.r * y}px`;
-  const ruler = $('ruler'), w = 100 * x;
-  ruler.setAttribute('width', w + 8); ruler.setAttribute('height', 26);
-  let s = `<line x1="4" y1="0.5" x2="${4 + w}" y2="0.5"/>`;
-  for (let i = 0; i <= 100; i++) {
+  const ruler = $('ruler'), cm = Math.max(1, Math.min(10, Math.floor((room - 8) / (10 * tx)))), rw = cm * 10 * x;
+  ruler.setAttribute('width', rw + 8); ruler.setAttribute('height', 26);
+  ruler.setAttribute('aria-label', `Линейка ${cm} см`);
+  let s = `<line x1="4" y1="0.5" x2="${4 + rw}" y2="0.5"/>`;
+  for (let i = 0; i <= cm * 10; i++) {
     const px = 4 + i * x, len = i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 5;
     s += `<line x1="${px}" y1="0" x2="${px}" y2="${len}"/>`;
   }
-  for (let cm = 0; cm <= 10; cm++) s += `<text x="${4 + cm * 10 * x}" y="24">${cm}</text>`;
+  for (let c = 0; c <= cm; c++) s += `<text x="${4 + c * 10 * x}" y="24">${c}</text>`;
   ruler.innerHTML = s;
 });
+new ResizeObserver(() => kSp.onFrame(kSp.values)).observe($('cardBox').parentElement);
 let kPlaced = false;
 function renderCalib() {
   const c = calib(), kk = k();
