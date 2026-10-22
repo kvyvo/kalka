@@ -55,6 +55,17 @@ await check('MacBook Air 13″ is recognised: card frame ≈ 433 px', { viewport
   assert.ok(Math.abs(w - 433.4) < 1.5, `card ${w}`);
 });
 
+await check('MacBook Air 15″ at 1920×1243: card stands up to fit, ruler fits, no scroll', { viewport: { width: 1600, height: 1000 }, screen: { width: 1920, height: 1243 }, deviceScaleFactor: 2 }, async (page) => {
+  assert.equal(await page.locator('#screenSel').inputValue(), 'mba15');
+  await page.waitForTimeout(600);
+  const r = await page.evaluate(() => {
+    const b = document.getElementById('cardBox'), z = b.parentElement;
+    return { w: b.offsetWidth, h: b.offsetHeight, tall: b.classList.contains('tall'), over: z.scrollWidth - z.clientWidth };
+  });
+  assert.ok(r.tall && Math.abs(r.h - 85.6 * 1920 / 1440 * 224 / 2 / 25.4) < 1.5, JSON.stringify(r));
+  assert.ok(Math.abs(r.w / r.h - 53.98 / 85.6) < 0.01 && r.over <= 0, JSON.stringify(r));
+});
+
 await check('unknown 1366×768 laptop: diagonal 15.6″ gives ≈ 340 px card, bigger/smaller work, reload keeps it', { viewport: { width: 1366, height: 700 }, screen: { width: 1366, height: 768 } }, async (page) => {
   assert.equal(await page.locator('#screenSel').inputValue(), 'diag');
   await page.fill('#diag', '15.6'); await page.locator('#diag').dispatchEvent('change');
